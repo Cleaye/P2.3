@@ -134,7 +134,7 @@ GameObject:
   - component: {fileID: 13570267}
   - component: {fileID: 13570266}
   m_Layer: 0
-  m_Name: GameObject
+  m_Name: Terrain
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -152,8 +152,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0454b699e2bb24fcda71f09b66539d73, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  HeightMapWidth: 0
-  HeightMapHeight: 0
+  type: 1
+  dimensions: 2
+  resolution: 200
+  frequency: 12
+  octaves: 5
+  lacunarity: 2
+  persistence: 0.5
+  HeightMapWidth: 50
+  HeightMapHeight: 50
   MaxHeight: 0
 --- !u!23 &13570267
 MeshRenderer:
@@ -173,7 +180,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 10302, guid: 0000000000000000f000000000000000, type: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -340,11 +347,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fafdd4ee0e66cdd4fb4ea029671bb984, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  type: 0
-  dimensions: 3
-  resolution: 256
-  frequency: 1
-  octaves: 1
+  type: 1
+  dimensions: 2
+  resolution: 512
+  frequency: 5
+  octaves: 5
   lacunarity: 2
   persistence: 0.5
 --- !u!64 &734921471
