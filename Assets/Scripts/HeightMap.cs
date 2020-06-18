@@ -28,32 +28,19 @@ public class HeightMap : MonoBehaviour
     Mesh terrainMesh;
     Vector3[] vertices;
     int[] triangles;
-
-    // Heightmap dimensions
-    public int HeightMapWidth;
-    public int HeightMapHeight; 
-
-    public int MaxHeight;
-    
-    private float[,] _heightMap;
-    
+        
     // Start is called before the first frame update
     void Start()
     {
-        int HeightMapHeight = HeightMapWidth;
-        _heightMap = new float[HeightMapHeight, HeightMapWidth];
-        //CreateRandomHeightMapParallel(1,1f,1f,1);
         terrainMesh = new Mesh();
         GetComponent<MeshFilter>().mesh = terrainMesh;
         GetPerlinValue();
-        //CreateShape();
         UpdateMesh();
     }
 
     public void GetPerlinValue() {
-        vertices = new Vector3[(HeightMapWidth + 1) * (HeightMapHeight + 1)];
 
-        int resolution = HeightMapWidth;
+        vertices = new Vector3[(resolution + 1) * (resolution + 1)];
 
         // World coordinates
         Vector3 point00 = transform.TransformPoint(new Vector3(-0.5f,-0.5f));
@@ -75,27 +62,32 @@ public class HeightMap : MonoBehaviour
 				if (type != NoiseMethodType.Value) {
 					sample = sample * 0.5f + 0.5f;
 				}
-                vertices[i] = new Vector3(x, sample, y);
+                vertices[i] = new Vector3(x, sample * 4, y);
                 i++;
             }
         }
 
-        triangles = new int[HeightMapWidth * HeightMapHeight * 6];
+        var mask = GenerateTexture();
+        for (int i = 0; i < vertices.Length; i++) {
+            vertices[i].y += mask[i];
+        }
+
+        triangles = new int[resolution * resolution * 6];
 
         int vert = 0;
         int tris = 0;
 
         // Add triangles in order to draw the mesh later
-        for (int z = 0; z < HeightMapHeight; z++)
+        for (int z = 0; z < resolution; z++)
         {
-            for (int x = 0; x < HeightMapWidth; x++)
+            for (int x = 0; x < resolution; x++)
             {
                 triangles[tris + 0] = vert + 0;
-                triangles[tris + 1] = vert + HeightMapWidth + 1;
+                triangles[tris + 1] = vert + resolution + 1;
                 triangles[tris + 2] = vert + 1;
                 triangles[tris + 3] = vert + 1;
-                triangles[tris + 4] = vert + HeightMapWidth + 1;
-                triangles[tris + 5] = vert + HeightMapWidth + 2;
+                triangles[tris + 4] = vert + resolution + 1;
+                triangles[tris + 5] = vert + resolution + 2;
 
                 vert++;
                 tris += 6;
@@ -106,11 +98,11 @@ public class HeightMap : MonoBehaviour
 
     void CreateShape()
     {
-        vertices = new Vector3[(HeightMapWidth + 1) * (HeightMapHeight + 1)];
+        vertices = new Vector3[(resolution + 1) * (resolution + 1)];
 
-        for (int i = 0, z =0; z<= HeightMapHeight; z++)
+        for (int i = 0, z =0; z<= resolution; z++)
         {
-            for (int x = 0; x<=HeightMapWidth; x++)
+            for (int x = 0; x<=resolution; x++)
             {
                 float y = Mathf.PerlinNoise(x * .3f, z * .3f) * 2f;
                 vertices[i] = new Vector3(x, y, z);
@@ -118,22 +110,22 @@ public class HeightMap : MonoBehaviour
             }
         }
 
-        triangles = new int[HeightMapWidth * HeightMapHeight * 6];
+        triangles = new int[resolution * resolution * 6];
 
         int vert = 0;
         int tris = 0;
 
         // Add triangles in order to draw the mesh later
-        for (int z = 0; z < HeightMapHeight; z++)
+        for (int z = 0; z < resolution; z++)
         {
-            for (int x = 0; x < HeightMapWidth; x++)
+            for (int x = 0; x < resolution; x++)
             {
                 triangles[tris + 0] = vert + 0;
-                triangles[tris + 1] = vert + HeightMapWidth + 1;
+                triangles[tris + 1] = vert + resolution + 1;
                 triangles[tris + 2] = vert + 1;
                 triangles[tris + 3] = vert + 1;
-                triangles[tris + 4] = vert + HeightMapWidth + 1;
-                triangles[tris + 5] = vert + HeightMapWidth + 2;
+                triangles[tris + 4] = vert + resolution + 1;
+                triangles[tris + 5] = vert + resolution + 2;
 
                 vert++;
                 tris += 6;
@@ -151,4 +143,21 @@ public class HeightMap : MonoBehaviour
         terrainMesh.RecalculateNormals();
     }
 
+     public float[] GenerateTexture(){
+ 
+        float[] mask = new float[(resolution + 1) * (resolution + 1)];
+        var maskCenter = new Vector2(resolution * 0.5f, resolution * 0.5f);
+            
+        for (int y = 0, i = 0; y < resolution; y++) {
+            for(var x = 0; x < resolution; x++){
+    
+                var distFromCenter  = Vector2.Distance(maskCenter, new Vector2(x, y));
+                var maskPixel  = (0.5f - (distFromCenter / resolution)) * 1f;
+                mask[i] = maskPixel * 4;
+                print(maskPixel);
+                i++;
+            }
+        }
+        return mask;
+    }
 }
