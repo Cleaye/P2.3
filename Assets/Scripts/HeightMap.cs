@@ -16,10 +16,10 @@ public class HeightMap : MonoBehaviour
 
     [Header("Terrain Settings")]
     // Controls how busy the noise is
-    public float terrainFrequency = 1f;
+    public float terrainFrequency = 50f;
     [Range(1, 8)]
     // Controls how many layers should be added on top of eachother
-	public int terrainOctaves = 1;
+	public int terrainOctaves = 5;
     // Controls the rate of change in frequency. Standard is double the frequency each octave
     [Range(1f, 4f)]
 	public float terrainLacunarity = 2f;
@@ -30,39 +30,21 @@ public class HeightMap : MonoBehaviour
     [Range(0f, 5f)]
     public float terrainAmplifier = 1.0f;
 
-    [Header("Sea Settings")]
-    // Controls how busy the noise is
-    public float seaFrequency = 1f;
-    [Range(1, 8)]
-    // Controls how many layers should be added on top of eachother
-	public int seaOctaves = 1;
-    // Controls the rate of change in frequency. Standard is double the frequency each octave
-    [Range(1f, 4f)]
-	public float seaLacunarity = 2f;
-    // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
-	[Range(0f, 1f)]
-	public float seaPersistence = 0.5f;
-    // Controls the difference in heights between points
-    [Range(0f, 5f)]
-    public float seaAmplifier = 1.0f;
+    public Gradient gradient;
+    float minTerrainHeight;
+    float maxTerrainHeight;
 
     Mesh terrainMesh;
     Vector3[] terrainVertices;
+    Color[] colors;
     int[] terrainTriangles;
-
-    Mesh seaMesh;
-    Vector3[] seaVertices;
-    int[] seaTriangles;
         
     // Start is called before the first frame update
     void Update()
     {
         terrainMesh = new Mesh();
-        seaMesh = new Mesh();
         terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
-        //seaMesh = GameObject.Find("Sea").GetComponent<MeshFilter>().mesh;
         GenerateCustomPerlinMap();
-       // GenerateCustomPerlinSea();
         UpdateMesh();
     }
 
@@ -93,12 +75,21 @@ public class HeightMap : MonoBehaviour
                 if (type != NoiseMethodType.Value) {
 					y = y * terrainAmplifier;
 				}
+                if (y > maxTerrainHeight)
+                {
+                    maxTerrainHeight = y;
+                }
+                if(y < minTerrainHeight)
+                {
+                    minTerrainHeight = y;
+                }
                 terrainVertices[i] = new Vector3(x, y, z);
                 i++;
             }
         }
 
         var mask = GenerateTexture();
+        //print(mask);
         for (int i = 0; i < terrainVertices.Length; i++) {
             terrainVertices[i].y += mask[i];
         }
@@ -125,58 +116,16 @@ public class HeightMap : MonoBehaviour
             }
             vert++;
         }
-    }
 
-    private void GenerateCustomPerlinSea() {
-
-        seaVertices = new Vector3[(resolution + 1) * (resolution + 1)];
-        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
-
-        // Map points have to be between 0-1 range
-        float stepSize = 1f / resolution;
-
-        // World coordinates
-        // Vector3 point00 = transform.TransformPoint(new Vector3(-0.5f,-0.5f));
-		// Vector3 point10 = transform.TransformPoint(new Vector3( 0.5f,-0.5f));
-		// Vector3 point01 = transform.TransformPoint(new Vector3(-0.5f, 0.5f));
-		// Vector3 point11 = transform.TransformPoint(new Vector3( 0.5f, 0.5f));
-        
-        // Calculate height for each point on the grid
+        colors = new Color[terrainVertices.Length];
         for (int i = 0, z = 0; z <= resolution; z++)
         {
             for (int x = 0; x <=resolution; x++)
             {
-                Vector3 point = terrainVertices[i];
-                float y = Noise.Sum(method, point, seaFrequency, seaOctaves, seaLacunarity, seaPersistence);
-                if (type != NoiseMethodType.Value) {
-					y = y * seaAmplifier;
-				}
-                seaVertices[i] = new Vector3(x, 0, z);
+                float height = Mathf.InverseLerp(minTerrainHeight, maxTerrainHeight, terrainVertices[i].y);
+                colors[i] = gradient.Evaluate(height);
                 i++;
             }
-        }
-
-        seaTriangles = new int[resolution * resolution * 6];
-
-        int vert = 0;
-        int tris = 0;
-
-        // Add triangles in order to draw the mesh later
-        for (int z = 0; z < resolution; z++)
-        {
-            for (int x = 0; x < resolution; x++)
-            {
-                seaTriangles[tris + 0] = vert + 0;
-                seaTriangles[tris + 1] = vert + resolution + 1;
-                seaTriangles[tris + 2] = vert + 1;
-                seaTriangles[tris + 3] = vert + 1;
-                seaTriangles[tris + 4] = vert + resolution + 1;
-                seaTriangles[tris + 5] = vert + resolution + 2;
-
-                vert++;
-                tris += 6;
-            }
-            vert++;
         }
     }
 
@@ -185,12 +134,8 @@ public class HeightMap : MonoBehaviour
         terrainMesh.Clear();
         terrainMesh.vertices = terrainVertices;
         terrainMesh.triangles = terrainTriangles;
+        terrainMesh.colors = colors;
         terrainMesh.RecalculateNormals();
-
-        seaMesh.Clear();
-        seaMesh.vertices = seaVertices;
-        seaMesh.triangles = seaTriangles;
-        seaMesh.RecalculateNormals();
     }
 
      public float[] GenerateTexture(){
@@ -209,5 +154,4 @@ public class HeightMap : MonoBehaviour
         }
         return mask;
     }
-
 }
