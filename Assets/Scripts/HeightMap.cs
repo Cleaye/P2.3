@@ -6,6 +6,7 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter))]
 public class HeightMap : MonoBehaviour
 {
+    [Header("Perlin Noise Settings")]
     public NoiseMethodType type;
     [Range(1, 3)]
 	public int dimensions = 3;
@@ -13,34 +14,61 @@ public class HeightMap : MonoBehaviour
     [Range(2, 512)]
     public int resolution = 256;
 
+    [Header("Terrain Settings")]
     // Controls how busy the noise is
-    public float frequency = 1f;
+    public float terrainFrequency = 1f;
     [Range(1, 8)]
     // Controls how many layers should be added on top of eachother
-	public int octaves = 1;
+	public int terrainOctaves = 1;
     // Controls the rate of change in frequency. Standard is double the frequency each octave
     [Range(1f, 4f)]
-	public float lacunarity = 2f;
+	public float terrainLacunarity = 2f;
     // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
 	[Range(0f, 1f)]
-	public float persistence = 0.5f;
+	public float terrainPersistence = 0.5f;
+    // Controls the difference in heights between points
+    [Range(0f, 5f)]
+    public float terrainAmplifier = 1.0f;
+
+    [Header("Sea Settings")]
+    // Controls how busy the noise is
+    public float seaFrequency = 1f;
+    [Range(1, 8)]
+    // Controls how many layers should be added on top of eachother
+	public int seaOctaves = 1;
+    // Controls the rate of change in frequency. Standard is double the frequency each octave
+    [Range(1f, 4f)]
+	public float seaLacunarity = 2f;
+    // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
+	[Range(0f, 1f)]
+	public float seaPersistence = 0.5f;
+    // Controls the difference in heights between points
+    [Range(0f, 5f)]
+    public float seaAmplifier = 1.0f;
 
     Mesh terrainMesh;
-    Vector3[] vertices;
-    int[] triangles;
+    Vector3[] terrainVertices;
+    int[] terrainTriangles;
+
+    Mesh seaMesh;
+    Vector3[] seaVertices;
+    int[] seaTriangles;
         
     // Start is called before the first frame update
-    void Start()
+    void Update()
     {
         terrainMesh = new Mesh();
-        GetComponent<MeshFilter>().mesh = terrainMesh;
+        seaMesh = new Mesh();
+        terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
+        //seaMesh = GameObject.Find("Sea").GetComponent<MeshFilter>().mesh;
         GenerateCustomPerlinMap();
+       // GenerateCustomPerlinSea();
         UpdateMesh();
     }
 
     private void GenerateCustomPerlinMap() {
 
-        vertices = new Vector3[(resolution + 1) * (resolution + 1)];
+        terrainVertices = new Vector3[(resolution + 1) * (resolution + 1)];
         NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
 
         // Map points have to be between 0-1 range
@@ -61,21 +89,21 @@ public class HeightMap : MonoBehaviour
             {
                 Vector3 point = Vector3.Lerp(point0, point1, (x + 0.5f) * stepSize);
                 // Vector3 point = new Vector3(x * .3f, z * .3f);
-                float y = Noise.Sum(method, point, frequency, octaves, lacunarity, persistence);
+                float y = Noise.Sum(method, point, terrainFrequency, terrainOctaves, terrainLacunarity, terrainPersistence);
                 if (type != NoiseMethodType.Value) {
-					y = y * 4f;
+					y = y * terrainAmplifier;
 				}
-                vertices[i] = new Vector3(x, y, z);
+                terrainVertices[i] = new Vector3(x, y, z);
                 i++;
             }
         }
 
         var mask = GenerateTexture();
-        for (int i = 0; i < vertices.Length; i++) {
-            vertices[i].y += mask[i];
+        for (int i = 0; i < terrainVertices.Length; i++) {
+            terrainVertices[i].y += mask[i];
         }
 
-        triangles = new int[resolution * resolution * 6];
+        terrainTriangles = new int[resolution * resolution * 6];
 
         int vert = 0;
         int tris = 0;
@@ -85,12 +113,12 @@ public class HeightMap : MonoBehaviour
         {
             for (int x = 0; x < resolution; x++)
             {
-                triangles[tris + 0] = vert + 0;
-                triangles[tris + 1] = vert + resolution + 1;
-                triangles[tris + 2] = vert + 1;
-                triangles[tris + 3] = vert + 1;
-                triangles[tris + 4] = vert + resolution + 1;
-                triangles[tris + 5] = vert + resolution + 2;
+                terrainTriangles[tris + 0] = vert + 0;
+                terrainTriangles[tris + 1] = vert + resolution + 1;
+                terrainTriangles[tris + 2] = vert + 1;
+                terrainTriangles[tris + 3] = vert + 1;
+                terrainTriangles[tris + 4] = vert + resolution + 1;
+                terrainTriangles[tris + 5] = vert + resolution + 2;
 
                 vert++;
                 tris += 6;
@@ -99,21 +127,36 @@ public class HeightMap : MonoBehaviour
         }
     }
 
-    private void GenerateBuildInPerlinMap()
-    {
-        vertices = new Vector3[(resolution + 1) * (resolution + 1)];
+    private void GenerateCustomPerlinSea() {
 
+        seaVertices = new Vector3[(resolution + 1) * (resolution + 1)];
+        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+
+        // Map points have to be between 0-1 range
+        float stepSize = 1f / resolution;
+
+        // World coordinates
+        // Vector3 point00 = transform.TransformPoint(new Vector3(-0.5f,-0.5f));
+		// Vector3 point10 = transform.TransformPoint(new Vector3( 0.5f,-0.5f));
+		// Vector3 point01 = transform.TransformPoint(new Vector3(-0.5f, 0.5f));
+		// Vector3 point11 = transform.TransformPoint(new Vector3( 0.5f, 0.5f));
+        
+        // Calculate height for each point on the grid
         for (int i = 0, z = 0; z <= resolution; z++)
         {
             for (int x = 0; x <=resolution; x++)
             {
-                float y = Mathf.PerlinNoise(x * .3f, z * .3f) * 2f;
-                vertices[i] = new Vector3(x, y, z);
+                Vector3 point = terrainVertices[i];
+                float y = Noise.Sum(method, point, seaFrequency, seaOctaves, seaLacunarity, seaPersistence);
+                if (type != NoiseMethodType.Value) {
+					y = y * seaAmplifier;
+				}
+                seaVertices[i] = new Vector3(x, 0, z);
                 i++;
             }
         }
 
-        triangles = new int[resolution * resolution * 6];
+        seaTriangles = new int[resolution * resolution * 6];
 
         int vert = 0;
         int tris = 0;
@@ -123,12 +166,12 @@ public class HeightMap : MonoBehaviour
         {
             for (int x = 0; x < resolution; x++)
             {
-                triangles[tris + 0] = vert + 0;
-                triangles[tris + 1] = vert + resolution + 1;
-                triangles[tris + 2] = vert + 1;
-                triangles[tris + 3] = vert + 1;
-                triangles[tris + 4] = vert + resolution + 1;
-                triangles[tris + 5] = vert + resolution + 2;
+                seaTriangles[tris + 0] = vert + 0;
+                seaTriangles[tris + 1] = vert + resolution + 1;
+                seaTriangles[tris + 2] = vert + 1;
+                seaTriangles[tris + 3] = vert + 1;
+                seaTriangles[tris + 4] = vert + resolution + 1;
+                seaTriangles[tris + 5] = vert + resolution + 2;
 
                 vert++;
                 tris += 6;
@@ -140,9 +183,14 @@ public class HeightMap : MonoBehaviour
     void UpdateMesh()
     {
         terrainMesh.Clear();
-        terrainMesh.vertices = vertices;
-        terrainMesh.triangles = triangles;
+        terrainMesh.vertices = terrainVertices;
+        terrainMesh.triangles = terrainTriangles;
         terrainMesh.RecalculateNormals();
+
+        seaMesh.Clear();
+        seaMesh.vertices = seaVertices;
+        seaMesh.triangles = seaTriangles;
+        seaMesh.RecalculateNormals();
     }
 
      public float[] GenerateTexture(){
@@ -156,20 +204,10 @@ public class HeightMap : MonoBehaviour
                 var distFromCenter  = Vector2.Distance(maskCenter, new Vector2(x, y));
                 var maskPixel  = (0.5f - (distFromCenter / resolution)) * 1f;
                 mask[i] = maskPixel * 4;
-                print(maskPixel);
                 i++;
             }
         }
         return mask;
     }
 
-    private void OnDrawGizmos() {
-        if(vertices != null)
-        {
-            for (int i = 0; i < vertices.Length; i++)
-            {
-                Gizmos.DrawSphere(vertices[i], .1f);
-            }
-        }
-    }
 }
