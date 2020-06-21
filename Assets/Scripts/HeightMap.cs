@@ -9,10 +9,10 @@ public class HeightMap : MonoBehaviour
     [Header("Perlin Noise Settings")]
     public NoiseMethodType type;
     [Range(1, 3)]
-	public int dimensions = 3;
+	public int dimensions = 2;
 
     [Range(2, 512)]
-    public int resolution = 256;
+    public int resolution = 80;
 
     [Header("Terrain Settings")]
     // Controls how busy the noise is
@@ -25,7 +25,7 @@ public class HeightMap : MonoBehaviour
 	public float terrainLacunarity = 2f;
     // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
 	[Range(0f, 1f)]
-	public float terrainPersistence = 0.5f;
+	public float terrainPersistence = 0f;
     // Controls the difference in heights between points
     [Range(0f, 5f)]
     public float terrainAmplifier = 1.0f;
@@ -36,7 +36,7 @@ public class HeightMap : MonoBehaviour
 
     Mesh terrainMesh;
     Vector3[] terrainVertices;
-    Color[] colors;
+    Vector2[] uvs;
     int[] terrainTriangles;
         
     // Start is called before the first frame update
@@ -72,9 +72,8 @@ public class HeightMap : MonoBehaviour
                 Vector3 point = Vector3.Lerp(point0, point1, (x + 0.5f) * stepSize);
                 // Vector3 point = new Vector3(x * .3f, z * .3f);
                 float y = Noise.Sum(method, point, terrainFrequency, terrainOctaves, terrainLacunarity, terrainPersistence);
-                if (type != NoiseMethodType.Value) {
-					y = y * terrainAmplifier;
-				}
+                y = y * terrainAmplifier;
+                
                 if (y > maxTerrainHeight)
                 {
                     maxTerrainHeight = y;
@@ -91,7 +90,7 @@ public class HeightMap : MonoBehaviour
         var mask = GenerateTexture();
         //print(mask);
         for (int i = 0; i < terrainVertices.Length; i++) {
-            terrainVertices[i].y += mask[i];
+            terrainVertices[i].y -= mask[i];
         }
 
         terrainTriangles = new int[resolution * resolution * 6];
@@ -117,13 +116,12 @@ public class HeightMap : MonoBehaviour
             vert++;
         }
 
-        colors = new Color[terrainVertices.Length];
+        uvs = new Vector2[terrainVertices.Length];
         for (int i = 0, z = 0; z <= resolution; z++)
         {
             for (int x = 0; x <=resolution; x++)
             {
-                float height = Mathf.InverseLerp(minTerrainHeight, maxTerrainHeight, terrainVertices[i].y);
-                colors[i] = gradient.Evaluate(height);
+                uvs[i] = new Vector2((float)x / resolution, (float)z / resolution);
                 i++;
             }
         }
@@ -134,7 +132,7 @@ public class HeightMap : MonoBehaviour
         terrainMesh.Clear();
         terrainMesh.vertices = terrainVertices;
         terrainMesh.triangles = terrainTriangles;
-        terrainMesh.colors = colors;
+        terrainMesh.uv = uvs;
         terrainMesh.RecalculateNormals();
     }
 
@@ -142,13 +140,12 @@ public class HeightMap : MonoBehaviour
  
         float[] mask = new float[(resolution + 1) * (resolution + 1)];
         var maskCenter = new Vector2(resolution * 0.5f, resolution * 0.5f);
-            
+
         for (int y = 0, i = 0; y < resolution; y++) {
             for(var x = 0; x < resolution; x++){
-    
-                var distFromCenter  = Vector2.Distance(maskCenter, new Vector2(x, y));
-                var maskPixel  = (0.5f - (distFromCenter / resolution)) * 1f;
-                mask[i] = maskPixel * 4;
+                var distFromCenter  = Vector2.Distance(maskCenter, new Vector2(terrainVertices[i].x, terrainVertices[i].z));
+                var maskPixel = (distFromCenter / resolution) * 5f;
+                mask[i] = maskPixel;
                 i++;
             }
         }
