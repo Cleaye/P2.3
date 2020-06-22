@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -136,19 +136,21 @@ public class HeightMap : MonoBehaviour
         terrainMesh.RecalculateNormals();
     }
 
-     public float[] GenerateTexture(){
- 
-        float[] mask = new float[(resolution + 1) * (resolution + 1)];
+    public float[] GenerateTexture() {
+        float[] mask = new float[GridSize * GridSize];
         var maskCenter = new Vector2(resolution * 0.5f, resolution * 0.5f);
-
-        for (int y = 0, i = 0; y < resolution; y++) {
-            for(var x = 0; x < resolution; x++){
+        
+        for (int y = 0, i = 0; y < GridSize; y++) {
+            for(int x = 0; x < GridSize; x++, i++) {
                 var distFromCenter  = Vector2.Distance(maskCenter, new Vector2(terrainVertices[i].x, terrainVertices[i].z));
                 var maskPixel = (distFromCenter / resolution) * 5f;
                 mask[i] = maskPixel;
-                i++;
             }
         }
         return mask;
     }
+    /// <summary>
+    /// The number of vertices along one side of the heightmap.
+    /// </summary>
+    public int GridSize => this.resolution + 1;
 }
