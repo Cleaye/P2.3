@@ -7,6 +7,9 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter))]
 public class HeightMap : MonoBehaviour
 {
+    [Header("Generator")]
+    public bool continuousGeneration = false;
+
     [Header("Perlin Noise Settings")]
     public NoiseMethodType type;
     [Range(1, 3)]
@@ -41,11 +44,20 @@ public class HeightMap : MonoBehaviour
     int[] terrainTriangles;
         
     // Start is called before the first frame update
-    void Update() {
+    void Start() {
         terrainMesh = new Mesh();
         terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
         GenerateCustomPerlinMap();
         UpdateMesh();
+    }
+
+    void Update() {
+        if (continuousGeneration) {
+            terrainMesh = new Mesh();
+            terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
+            GenerateCustomPerlinMap();
+            UpdateMesh();
+        }
     }
 
     private void GenerateCustomPerlinMap() {
@@ -125,7 +137,6 @@ public class HeightMap : MonoBehaviour
             }
         }
     }
-
     void UpdateMesh()
     {
         terrainMesh.Clear();
@@ -134,7 +145,6 @@ public class HeightMap : MonoBehaviour
         terrainMesh.uv = uvs;
         terrainMesh.RecalculateNormals();
     }
-
      public float[] GenerateTexture(){
  
         float[] mask = new float[GridSize * GridSize];
