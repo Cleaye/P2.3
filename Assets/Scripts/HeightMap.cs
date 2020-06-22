@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter))]
@@ -40,8 +41,7 @@ public class HeightMap : MonoBehaviour
     int[] terrainTriangles;
         
     // Start is called before the first frame update
-    void Update()
-    {
+    void Update() {
         terrainMesh = new Mesh();
         terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
         GenerateCustomPerlinMap();
@@ -49,7 +49,6 @@ public class HeightMap : MonoBehaviour
     }
 
     private void GenerateCustomPerlinMap() {
-
         terrainVertices = new Vector3[(resolution + 1) * (resolution + 1)];
         NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
 
@@ -149,8 +148,74 @@ public class HeightMap : MonoBehaviour
         }
         return mask;
     }
+
+    /// <summary>
+    /// The height at the given (x, z) coordinates on the heightmap.
+    /// </summary>
+    public float this[int x, int z] {
+        get {
+            Vector3 p = this.terrainVertices[x + GridSize * z];
+            Debug.Assert((int) p.x == x && (int) p.z == z);
+            return p.y;
+        }
+        set {
+            Vector3 p = this.terrainVertices[x + GridSize * z];
+            Debug.Assert((int) p.x == x && (int) p.z == z);
+            this.terrainVertices[x + 1 * z] = new Vector3(p.x, value, p.y);
+        }
+    }
+
     /// <summary>
     /// The number of vertices along one side of the heightmap.
     /// </summary>
     public int GridSize => this.resolution + 1;
+
+    public const float SeaLevel = 0.0f;
+
+    /// <summary>
+    /// Given the coordinates of a grid point, returns the coordinates of all
+    /// neighboring points (including diagonally neighboring points).
+    /// </summary>
+    public IEnumerable<(int X, int Z)> NeighborsOf(int x, int z)
+        => from nx in Enumerable.Range(x - 1, 3)
+           from nz in Enumerable.Range(z - 1, 3)
+           where nx >= 0 && nx < GridSize && nz >= 0 && nz < GridSize
+           select (nx, nz);
+
+    /// <summary>
+    /// Returns true if and only if the terrain point at the given coordinates
+    /// is at least at sea level.
+    /// </summary>
+    public bool IsLand(int x, int z)
+        => this[x, z] > SeaLevel;
+
+    /// <summary>
+    /// Returns true if and only if the terrain point at the given coordinates
+    /// is below sea level.
+    /// </summary>
+    public bool IsSea(int x, int z)
+        => !IsLand(x, z);
+
+    /// <summary>
+    /// Returns true if and only if the terrain point at the given coordinates
+    /// is land and is directly connected to sea.
+    /// </summary>
+    public bool IsCoast(int x, int z)
+        => IsLand(x, z)
+        && NeighborsOf(x, z).Any(n => IsSea(n.X, n.Z));
+
+    // Uncomment to draws lines on each vertex that is considered coast.
+    // Used for debugging.
+    /*
+    private void OnDrawGizmos() {
+        if (this.terrainVertices is null)
+            return;
+        foreach (Vector3 vertex in this.terrainVertices) {
+            if (IsCoast((int) vertex.x, (int) vertex.z)) {
+                Gizmos.DrawLine(vertex, vertex + 3.0f * Vector3.up);
+            }
+        }   
+    }
+    */
+
 }
