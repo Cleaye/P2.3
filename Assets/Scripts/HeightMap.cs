@@ -13,7 +13,7 @@ public class HeightMap : MonoBehaviour
 	public int dimensions = 2;
 
     [Range(2, 512)]
-    public int resolution = 80;
+    public int resolution = 250;
 
     [Header("Terrain Settings")]
     // Controls how busy the noise is
@@ -26,10 +26,10 @@ public class HeightMap : MonoBehaviour
 	public float terrainLacunarity = 2f;
     // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
 	[Range(0f, 1f)]
-	public float terrainPersistence = 0f;
+	public float terrainPersistence = 0.6f;
     // Controls the difference in heights between points
     [Range(0f, 5f)]
-    public float terrainAmplifier = 1.0f;
+    public float terrainAmplifier = 2.3f;
 
     public Gradient gradient;
     float minTerrainHeight;
@@ -135,15 +135,18 @@ public class HeightMap : MonoBehaviour
         terrainMesh.RecalculateNormals();
     }
 
-    public float[] GenerateTexture() {
+     public float[] GenerateTexture(){
+ 
         float[] mask = new float[GridSize * GridSize];
+        Array.Clear(mask, 0, mask.Length);
         var maskCenter = new Vector2(resolution * 0.5f, resolution * 0.5f);
-        
-        for (int y = 0, i = 0; y < GridSize; y++) {
-            for(int x = 0; x < GridSize; x++, i++) {
-                var distFromCenter  = Vector2.Distance(maskCenter, new Vector2(terrainVertices[i].x, terrainVertices[i].z));
-                var maskPixel = (distFromCenter / resolution) * 5f;
+
+        for (int y = 0, i = 0; y <  GridSize; y++) {
+            for(var x = 0; x < GridSize; x++) {
+                var distFromCenter = Vector2.Distance(maskCenter, new Vector2(terrainVertices[i].x, terrainVertices[i].z));
+                var maskPixel = (distFromCenter / resolution);
                 mask[i] = maskPixel;
+                i++;
             }
         }
         return mask;
