@@ -174,7 +174,8 @@ public class HeightMap : MonoBehaviour
         set {
             Vector3 p = this.terrainVertices[x + GridSize * z];
             Debug.Assert((int) p.x == x && (int) p.z == z);
-            this.terrainVertices[x + 1 * z] = new Vector3(p.x, value, p.y);
+            this.terrainVertices[x + GridSize * z]
+                = new Vector3(p.x, value, p.y);
         }
     }
 
