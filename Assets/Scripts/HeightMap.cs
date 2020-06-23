@@ -44,25 +44,25 @@ public class HeightMap : MonoBehaviour
     float minTerrainHeight;
     float maxTerrainHeight;
 
-    float[,] heightmap;
-
-    Mesh terrainMesh;
+    private float[,] heightmap;
+    private List<GameObject> meshObjects;
         
     // Start is called before the first frame update
     void Start() {
-        SeaLevel = GameObject.Find("Ocean").transform.position.y;
-        terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
-        GenerateTerrain();
-        GenerateMeshes();
+        Generate();
     }
 
     void Update() {
         if (continuousGeneration) {
-            SeaLevel = GameObject.Find("Ocean").transform.position.y;
-            terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
-            GenerateTerrain();
-            GenerateMeshes();
+            Generate();
         }
+    }
+
+    private void Generate() {
+        SeaLevel = GameObject.Find("Ocean").transform.position.y;
+        GetComponent<MeshRenderer>().enabled = false;
+        GenerateTerrain();
+        GenerateMeshes();
     }
 
     private void GenerateTerrain() {
@@ -78,6 +78,42 @@ public class HeightMap : MonoBehaviour
     }
 
     private void GenerateMeshes() {
+        meshObjects = meshObjects ?? new List<GameObject>();
+        foreach (var meshObject in meshObjects)
+            GameObject.Destroy(meshObject);
+        meshObjects.Clear();
+
+        foreach (var (mx, mz) in MeshPoints) {
+            MeshData data = new MeshData();
+            foreach (var (x, z) in AreaOf(mx, mz, MaxMeshSize)) {
+                Vector3 position = new Vector3(
+                    x,
+                    heightmap[x, z],
+                    z
+                );
+                data.Positions.Add(position);
+                Vector2 texcoords = new Vector2(
+                    (float) x / resolution,
+                    (float) z / resolution
+                );
+                data.Texcoords.Add(texcoords);
+            }
+            int max = MaxMeshSize - 1;
+            for (int z = 0, v = 0; z < max; z++, v++)
+                for (int x = 0; x < max; x++, v++) {
+                    if (mx + x >= GridSize || mz + z >= GridSize)
+                        continue;
+                    data.Indices.Add(v + 0);
+                    data.Indices.Add(v + max + 1);
+                    data.Indices.Add(v + 1);
+                    data.Indices.Add(v + 1);
+                    data.Indices.Add(v + max + 1);
+                    data.Indices.Add(v + max + 2);
+                }
+            meshObjects.Add(CreateMesh(data));
+        }
+
+        /*
         MeshData data = new MeshData();
         
         // Positions and texcoords
@@ -95,7 +131,7 @@ public class HeightMap : MonoBehaviour
                 );
                 data.Texcoords.Add(texcoords);
             }
-        
+
         // Indices
         for (int z = 0, v = 0; z < resolution; z++, v++)
             for (int x = 0; x < resolution; x++, v++) {
@@ -107,11 +143,38 @@ public class HeightMap : MonoBehaviour
                 data.Indices.Add(v + resolution + 2);
             }
 
+        meshObjects.Add(CreateMesh(data));
+
+        /*
         terrainMesh.Clear();
         terrainMesh.vertices  = data.Positions.ToArray();
         terrainMesh.triangles = data.Indices.ToArray();
         terrainMesh.uv        = data.Texcoords.ToArray();
         terrainMesh.RecalculateNormals();
+        */
+    }
+
+    /// <summary>
+    /// Spawn a game object with a mesh for part of the terrain.
+    /// Multiple game objects are needed because a game object can only have
+    /// one mesh.
+    /// </summary>
+    private GameObject CreateMesh(MeshData data) {
+        GameObject @object = new GameObject("TerrainMesh");
+        @object.transform.parent        = this.transform;
+        @object.transform.localPosition = Vector3.zero;
+        @object.transform.localRotation = Quaternion.identity;
+        @object.transform.localScale    = Vector3.one;
+        MeshFilter   filter   = @object.AddComponent<MeshFilter>();
+        MeshRenderer source   = this.GetComponent<MeshRenderer>();
+        MeshRenderer renderer = @object.AddComponent<MeshRenderer>();
+        renderer.materials = source.materials;
+        filter.mesh.Clear();
+        filter.mesh.vertices  = data.Positions.ToArray();
+        filter.mesh.triangles = data.Indices.ToArray();
+        filter.mesh.uv        = data.Texcoords.ToArray();
+        filter.mesh.RecalculateNormals();
+        return @object;
     }
 
     private void InitializeMap()
@@ -223,6 +286,32 @@ public class HeightMap : MonoBehaviour
            from nz in Enumerable.Range(z - 1, 3)
            where nx >= 0 && nx < GridSize && nz >= 0 && nz < GridSize
            select (nx, nz);
+
+    /// <summary>
+    /// Returns the coordinates of all points in a square area specified by a
+    /// starting point and the size (number of points) of the square.
+    /// </summary>
+    public IEnumerable<(int X, int Z)> AreaOf(int x, int z, int size)
+        => from ax in Enumerable.Range(x, size)
+           from az in Enumerable.Range(z, size)
+           where ax < GridSize && az < GridSize
+           select (ax, az);
+
+    private const int MaxMeshSize = 256;
+
+    public IEnumerable<(int X, int Z)> MeshPoints {
+        get {
+            int x = 0, z = 0;
+            while (z < GridSize) {
+                while (x < GridSize) {
+                    yield return (x, z);
+                    x += MaxMeshSize - 1; // Overlap of 1 between meshes
+                }
+                x = 0;
+                z += MaxMeshSize - 1; // Overlap of 1 between meshes
+            }
+        }
+    }
 
     /// <summary>
     /// Returns true if and only if the terrain point at the given coordinates
