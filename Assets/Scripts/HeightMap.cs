@@ -4,6 +4,12 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+public class MeshData {
+    public List<Vector3> Positions = new List<Vector3>();
+    public List<Vector2> Texcoords = new List<Vector2>();
+    public List<int>     Indices   = new List<int>();
+}
+
 [RequireComponent(typeof(MeshFilter))]
 public class HeightMap : MonoBehaviour
 {
@@ -38,18 +44,22 @@ public class HeightMap : MonoBehaviour
     float minTerrainHeight;
     float maxTerrainHeight;
 
+    float[,] heightmap;
+
     Mesh terrainMesh;
-    Vector3[] terrainVertices;
-    Vector2[] uvs;
-    int[] terrainTriangles;
+    // Vector3[] terrainVertices;
+    // Vector2[] uvs;
+    // int[] terrainTriangles;
         
     // Start is called before the first frame update
     void Start() {
         SeaLevel = GameObject.Find("Ocean").transform.position.y;
         terrainMesh = new Mesh();
         terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
-        GenerateCustomPerlinMap();
-        UpdateMesh();
+        GenerateTerrain();
+        GenerateMeshes();
+        // GenerateCustomPerlinMap();
+        // UpdateMesh();
     }
 
     /*
@@ -63,8 +73,127 @@ public class HeightMap : MonoBehaviour
     }
     */
 
+    private void GenerateTerrain() {
+        InitializeMap();
+        GenerateNoise();
+        float[,] mask = GenerateMask();
+        ApplyMask(mask);
+
+        CreateMountains();
+        for (int i = 0; i < 5; i++) {
+            UpdateShore();
+        }
+    }
+
+    private void GenerateMeshes() {
+        MeshData data = new MeshData();
+        
+        // Positions and texcoords
+        for (int z = 0; z < GridSize; z++)
+            for (int x = 0; x < GridSize; x++) {
+                Vector3 position = new Vector3(
+                    (float) x,
+                    heightmap[x, z],
+                    (float) z
+                );
+                data.Positions.Add(position);
+                Vector2 texcoords = new Vector2(
+                    (float) x / resolution,
+                    (float) z / resolution
+                );
+                data.Texcoords.Add(texcoords);
+            }
+        
+        // Indices
+        for (int z = 0, v = 0; z < resolution; z++, v++)
+            for (int x = 0; x < resolution; x++, v++) {
+                data.Indices.Add(v + 0);
+                data.Indices.Add(v + resolution + 1);
+                data.Indices.Add(v + 1);
+                data.Indices.Add(v + 1);
+                data.Indices.Add(v + resolution + 1);
+                data.Indices.Add(v + resolution + 2);
+            }
+
+        terrainMesh.Clear();
+        terrainMesh.vertices  = data.Positions.ToArray();
+        terrainMesh.triangles = data.Indices.ToArray();
+        terrainMesh.uv        = data.Texcoords.ToArray();
+        terrainMesh.RecalculateNormals();
+    }
+
+    private void InitializeMap()
+        => heightmap = new float[GridSize, GridSize];
+
+    private void GenerateNoise() {
+        // Reset min and max terrain height values
+        maxTerrainHeight = float.NegativeInfinity;
+        minTerrainHeight = float.PositiveInfinity;
+        // Get the noise method to be used
+        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+        // Map points have to be between 0-1 range
+        float stepSize = 1f / resolution;
+        // World coordinates
+        Vector3
+            point00 = transform.TransformPoint(new Vector3(-0.5f, -0.5f)),
+            point10 = transform.TransformPoint(new Vector3(0.5f, -0.5f)),
+            point01 = transform.TransformPoint(new Vector3(-0.5f, 0.5f)),
+            point11 = transform.TransformPoint(new Vector3(0.5f, 0.5f));
+        for (int z = 0; z <= resolution; z++) {
+            Vector3
+                point0 = Vector3.Lerp(point00, point01, (z + 0.5f) * stepSize),
+                point1 = Vector3.Lerp(point10, point11, (z + 0.5f) * stepSize);
+            for (int x = 0; x <= resolution; x++) {
+                Vector3 point
+                    = Vector3.Lerp(point0, point1, (x + 0.5f) * stepSize);
+                float y
+                    = terrainAmplifier
+                    * Noise.Sum(method, point, terrainFrequency, terrainOctaves,
+                        terrainLacunarity, terrainPersistence);
+                if (y > maxTerrainHeight)
+                    maxTerrainHeight = y;
+                if (y < minTerrainHeight)
+                    minTerrainHeight = y;
+                heightmap[x, z] = y;
+            }
+        }
+    }
+
+    private void ApplyMask(float[,] mask) {
+        for (int z = 0; z < GridSize; z++) {
+            for (int x = 0; x < GridSize; x++) {
+                heightmap[x, z] -= mask[x, z];
+            }
+        }
+    }
+
+    private Vector3 LocalToWorld(float x, float y, float z = 0.0f)
+        => transform.TransformPoint(x, y, z);
+
+    private Vector3 GridToWorld(int x, int z, float stepSize) {
+        Vector3
+            point0 = Vector3.Lerp(
+                LocalToWorld(-0.5f, -0.5f),
+                LocalToWorld(-0.5f, 0.5f),
+                (z + 0.5f) * stepSize
+            ),
+            point1 = Vector3.Lerp(
+                LocalToWorld(0.5f, -0.5f),
+                LocalToWorld(0.5f, 0.5f),
+                (z + 0.5f) * stepSize
+            ),
+            point  = Vector3.Lerp(
+                point0,
+                point1,
+                (x + 0.5f) * stepSize
+            );
+        return point;
+    }
+
+    /*
     private void GenerateCustomPerlinMap() {
-        terrainVertices = new Vector3[(resolution + 1) * (resolution + 1)];
+        heightmap = new float[GridSize, GridSize];
+        terrainVertices = new Vector3[GridSize * GridSize];
         NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
 
         // Map points have to be between 0-1 range
@@ -81,7 +210,7 @@ public class HeightMap : MonoBehaviour
         {
             Vector3 point0 = Vector3.Lerp(point00, point01, (z + 0.5f) * stepSize);
             Vector3 point1 = Vector3.Lerp(point10, point11, (z + 0.5f) * stepSize);
-            for (int x = 0; x <= resolution; x++)
+            for (int x = 0; x <= resolution; x++, i++)
             {
                 Vector3 point = Vector3.Lerp(point0, point1, (x + 0.5f) * stepSize);
                 // Vector3 point = new Vector3(x * .3f, z * .3f);
@@ -97,7 +226,7 @@ public class HeightMap : MonoBehaviour
                     minTerrainHeight = y;
                 }
                 this[x,z] = y;
-                i++;
+                heightmap[x, z] = y;
             }
         }
 
@@ -146,12 +275,14 @@ public class HeightMap : MonoBehaviour
             }
         }
     }
+    */
 
     void CreateMountains() {
         for (int z = 0; z <= resolution; z++) {
             for (int x = 0; x <=resolution; x++) {
                 if (IsLand(x,z) && !IsCoast(x,z)) {
-                    this[x,z] *= 10;
+                    heightmap[x, z] *= 10.0f;
+                    // this[x,z] *= 10;
                 }
             }
         }
@@ -164,13 +295,15 @@ public class HeightMap : MonoBehaviour
                     var neighbors = NeighborsOf(x, z);
                     var seaNeighbors = neighbors.Where(n => IsSea(n.X, n.Z));
                     foreach (var n in seaNeighbors) {
-                        this[n.X, n.Z] = this[x,z];
+                        heightmap[n.X, n.Z] = heightmap[x, z];
+                        // this[n.X, n.Z] = this[x,z];
                     }
                 }
             }
         }
     }
 
+    /*
     void UpdateMesh()
     {
         terrainMesh.Clear();
@@ -179,6 +312,7 @@ public class HeightMap : MonoBehaviour
         terrainMesh.uv = uvs;
         terrainMesh.RecalculateNormals();
     }
+
      public float[] GenerateTexture(){
  
         float[] mask = new float[GridSize * GridSize];
@@ -195,10 +329,33 @@ public class HeightMap : MonoBehaviour
         }
         return mask;
     }
+    */
+
+    public float[,] GenerateMask() {
+        float[,] mask = new float[GridSize, GridSize];
+        for (int j = 0; j < GridSize; j++)
+            for (int i = 0; i < GridSize; i++)
+                mask[i, j] = 0.0f;
+        Vector3 center = new Vector2(0.5f * resolution, 0.5f * resolution);
+        for (int z = 0; z < GridSize; z++)
+            for (int x = 0; x < GridSize; x++) {
+                float
+                    distance = Vector2.Distance(center, new Vector2(x, z)),
+                    value    = distance / resolution;
+                mask[x, z] = value;
+            }
+        return mask;
+    }
 
     /// <summary>
     /// The height at the given (x, z) coordinates on the heightmap.
     /// </summary>
+    public float this[int x, int z] {
+        get => heightmap[x, z];
+        set => heightmap[x, z] = value;
+    }
+
+    /*
     public float this[int x, int z] {
         get {
             Vector3 p = this.terrainVertices[x + GridSize * z];
@@ -212,6 +369,7 @@ public class HeightMap : MonoBehaviour
                 = new Vector3(x, value, z);
         }
     }
+    */
 
     /// <summary>
     /// The number of vertices along one side of the heightmap.
@@ -235,7 +393,7 @@ public class HeightMap : MonoBehaviour
     /// is at least at sea level.
     /// </summary>
     public bool IsLand(int x, int z)
-        => this[x, z] > SeaLevel;
+        => heightmap[x, z] > SeaLevel; // this[x, z] > SeaLevel;
 
     /// <summary>
     /// Returns true if and only if the terrain point at the given coordinates
