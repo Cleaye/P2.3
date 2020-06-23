@@ -45,12 +45,14 @@ public class HeightMap : MonoBehaviour
         
     // Start is called before the first frame update
     void Start() {
+        SeaLevel = GameObject.Find("Ocean").transform.position.y;
         terrainMesh = new Mesh();
         terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
         GenerateCustomPerlinMap();
         UpdateMesh();
     }
 
+    /*
     void Update() {
         if (continuousGeneration) {
             terrainMesh = new Mesh();
@@ -59,6 +61,7 @@ public class HeightMap : MonoBehaviour
             UpdateMesh();
         }
     }
+    */
 
     private void GenerateCustomPerlinMap() {
         terrainVertices = new Vector3[(resolution + 1) * (resolution + 1)];
@@ -78,7 +81,7 @@ public class HeightMap : MonoBehaviour
         {
             Vector3 point0 = Vector3.Lerp(point00, point01, (z + 0.5f) * stepSize);
             Vector3 point1 = Vector3.Lerp(point10, point11, (z + 0.5f) * stepSize);
-            for (int x = 0; x <=resolution; x++)
+            for (int x = 0; x <= resolution; x++)
             {
                 Vector3 point = Vector3.Lerp(point0, point1, (x + 0.5f) * stepSize);
                 // Vector3 point = new Vector3(x * .3f, z * .3f);
@@ -93,17 +96,25 @@ public class HeightMap : MonoBehaviour
                 {
                     minTerrainHeight = y;
                 }
-                terrainVertices[i] = new Vector3(x, y, z);
+                this[x,z] = y;
                 i++;
             }
         }
 
         var mask = GenerateTexture();
-        //print(mask);
-        for (int i = 0; i < terrainVertices.Length; i++) {
-            terrainVertices[i].y -= mask[i];
+        for (int i = 0, z = 0; z <= resolution; z++) {
+            for (int x = 0; x <= resolution; x++) {            
+                this[x,z] -= mask[i];
+                i++;
+            }
         }
 
+        CreateMountains();
+
+        for (int i = 0; i < 5; i++) {
+            UpdateShore();
+        }
+        
         terrainTriangles = new int[resolution * resolution * 6];
 
         int vert = 0;
@@ -128,15 +139,38 @@ public class HeightMap : MonoBehaviour
         }
 
         uvs = new Vector2[terrainVertices.Length];
-        for (int i = 0, z = 0; z <= resolution; z++)
-        {
-            for (int x = 0; x <=resolution; x++)
-            {
+        for (int i = 0, z = 0; z <= resolution; z++) {
+            for (int x = 0; x <=resolution; x++) {
                 uvs[i] = new Vector2((float)x / resolution, (float)z / resolution);
                 i++;
             }
         }
     }
+
+    void CreateMountains() {
+        for (int z = 0; z <= resolution; z++) {
+            for (int x = 0; x <=resolution; x++) {
+                if (IsLand(x,z) && !IsCoast(x,z)) {
+                    this[x,z] *= 10;
+                }
+            }
+        }
+    }
+
+    void UpdateShore() {
+        for (int z = 0; z <= resolution; z++) {
+            for (int x = 0; x <= resolution; x++) {
+                if (IsCoast(x,z)) {
+                    var neighbors = NeighborsOf(x, z);
+                    var seaNeighbors = neighbors.Where(n => IsSea(n.X, n.Z));
+                    foreach (var n in seaNeighbors) {
+                        this[n.X, n.Z] = this[x,z];
+                    }
+                }
+            }
+        }
+    }
+
     void UpdateMesh()
     {
         terrainMesh.Clear();
@@ -172,10 +206,10 @@ public class HeightMap : MonoBehaviour
             return p.y;
         }
         set {
-            Vector3 p = this.terrainVertices[x + GridSize * z];
-            Debug.Assert((int) p.x == x && (int) p.z == z);
+            //Vector3 p = this.terrainVertices[x + GridSize * z];
+            //Debug.Assert((int) p.x == x && (int) p.z == z);
             this.terrainVertices[x + GridSize * z]
-                = new Vector3(p.x, value, p.y);
+                = new Vector3(x, value, z);
         }
     }
 
@@ -184,7 +218,7 @@ public class HeightMap : MonoBehaviour
     /// </summary>
     public int GridSize => this.resolution + 1;
 
-    public const float SeaLevel = 0.0f;
+    public float SeaLevel = 0;
 
     /// <summary>
     /// Given the coordinates of a grid point, returns the coordinates of all
