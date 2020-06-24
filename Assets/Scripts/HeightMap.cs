@@ -1,15 +1,20 @@
-﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+/// <summary>
+/// Contains vertex and index data for a mesh.
+/// </summary>
 public class MeshData {
     public List<Vector3> Positions = new List<Vector3>();
     public List<Vector2> Texcoords = new List<Vector2>();
     public List<int>     Indices   = new List<int>();
 }
 
+/// <summary>
+/// Represents a rectangular area on a grid, specified by a corner of the area
+/// and the size of the area's sides.
+/// </summary>
 public class GridArea {
     
     public int X;
@@ -21,6 +26,9 @@ public class GridArea {
         => (X, Z, SizeX, SizeZ)
         =  (x, z, sizeX, sizeZ);
     
+    /// <summary>
+    /// Yields all points in the area.
+    /// </summary>
     public IEnumerable<(int X, int Z)> Points
         => from x in Enumerable.Range(X, SizeX)
            from z in Enumerable.Range(Z, SizeZ)
@@ -62,7 +70,9 @@ public class HeightMap : MonoBehaviour
     float minTerrainHeight;
     float maxTerrainHeight;
 
+    // The height for every (x, z)-coordinate on the terrain grid.
     private float[,] heightmap;
+    // The child objects that hold the terrain meshes.
     private List<GameObject> meshObjects;
         
     // Start is called before the first frame update
@@ -71,14 +81,15 @@ public class HeightMap : MonoBehaviour
     }
 
     void Update() {
-        if (continuousGeneration) {
+        if (continuousGeneration)
             Generate();
-        }
     }
 
     private void Generate() {
-        SeaLevel = GameObject.Find("Ocean").transform.position.y;
+        // Disable this object's MeshRenderer, as the meshes will be in separate
+        // child GameObjects (as a GameObject can have only one mesh)
         GetComponent<MeshRenderer>().enabled = false;
+        SeaLevel = GameObject.Find("Ocean").transform.position.y;
         GenerateTerrain();
         GenerateMeshes();
     }
@@ -88,14 +99,16 @@ public class HeightMap : MonoBehaviour
         GenerateNoise();
         float[,] mask = GenerateMask();
         ApplyMask(mask);
-
         CreateMountains();
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 5; i++)
             UpdateShore();
-        }
     }
 
+    /// <summary>
+    /// Creates the terrain meshes.
+    /// </summary>
     private void GenerateMeshes() {
+        // Clear any existing meshes
         meshObjects = meshObjects ?? new List<GameObject>();
         foreach (var meshObject in meshObjects)
             GameObject.Destroy(meshObject);
@@ -103,21 +116,26 @@ public class HeightMap : MonoBehaviour
 
         foreach (var (mx, mz) in MeshPoints) {
             MeshData data = new MeshData();
+            // Find the part of the terrain that should be covered by this mesh
             GridArea area = AreaOf(mx, mz, MaxMeshSize);
+            // Generate the mesh vertices
             for (int z = area.Z; z < area.Z + area.SizeZ; z++)
                 for (int x = area.X; x < area.X + area.SizeX; x++) {
+                    // Set position
                     Vector3 position = new Vector3(
                         x,
                         heightmap[x, z],
                         z
                     );
                     data.Positions.Add(position);
+                    // Set texture coords
                     Vector2 texcoords = new Vector2(
                         (float) x / resolution,
                         (float) z / resolution
                     );
                     data.Texcoords.Add(texcoords);
                 }
+            // Set the mesh indices
             for (int z = 0, v = 0; z < area.SizeZ - 1; z++, v++)
                 for (int x = 0; x < area.SizeX - 1; x++, v++) {
                     int o = x + area.SizeX * z;
@@ -128,64 +146,28 @@ public class HeightMap : MonoBehaviour
                     data.Indices.Add(o + area.SizeX + 1);
                     data.Indices.Add(o + 1);
                 }
+            // Add a new game object with the mesh
             meshObjects.Add(CreateMesh(data));
         }
-
-        /*
-        MeshData data = new MeshData();
-        
-        // Positions and texcoords
-        for (int z = 0; z < GridSize; z++)
-            for (int x = 0; x < GridSize; x++) {
-                Vector3 position = new Vector3(
-                    (float) x,
-                    heightmap[x, z],
-                    (float) z
-                );
-                data.Positions.Add(position);
-                Vector2 texcoords = new Vector2(
-                    (float) x / resolution,
-                    (float) z / resolution
-                );
-                data.Texcoords.Add(texcoords);
-            }
-
-        // Indices
-        for (int z = 0, v = 0; z < resolution; z++, v++)
-            for (int x = 0; x < resolution; x++, v++) {
-                data.Indices.Add(v + 0);
-                data.Indices.Add(v + resolution + 1);
-                data.Indices.Add(v + 1);
-                data.Indices.Add(v + 1);
-                data.Indices.Add(v + resolution + 1);
-                data.Indices.Add(v + resolution + 2);
-            }
-
-        meshObjects.Add(CreateMesh(data));
-
-        /*
-        terrainMesh.Clear();
-        terrainMesh.vertices  = data.Positions.ToArray();
-        terrainMesh.triangles = data.Indices.ToArray();
-        terrainMesh.uv        = data.Texcoords.ToArray();
-        terrainMesh.RecalculateNormals();
-        */
     }
 
     /// <summary>
-    /// Spawn a game object with a mesh for part of the terrain.
+    /// Spawns a game object with a mesh for part of the terrain.
     /// Multiple game objects are needed because a game object can only have
     /// one mesh.
     /// </summary>
     private GameObject CreateMesh(MeshData data) {
+        // Create a new object and make it a child of the terrain.
         GameObject @object = new GameObject("TerrainMesh");
         @object.transform.parent        = this.transform;
+        // Reset the child's transform.
         @object.transform.localPosition = Vector3.zero;
         @object.transform.localRotation = Quaternion.identity;
         @object.transform.localScale    = Vector3.one;
+        // Set the mesh of the child with the given data.
         MeshFilter   filter   = @object.AddComponent<MeshFilter>();
-        MeshRenderer source   = this.GetComponent<MeshRenderer>();
         MeshRenderer renderer = @object.AddComponent<MeshRenderer>();
+        MeshRenderer source   = this.GetComponent<MeshRenderer>();
         renderer.materials = source.materials;
         filter.mesh.Clear();
         filter.mesh.vertices  = data.Positions.ToArray();
@@ -195,9 +177,15 @@ public class HeightMap : MonoBehaviour
         return @object;
     }
 
+    /// <summary>
+    /// Initializes the heightmap.
+    /// </summary>
     private void InitializeMap()
         => heightmap = new float[GridSize, GridSize];
 
+    /// <summary>
+    /// Generates heights for the heightmap using noise.
+    /// </summary>
     private void GenerateNoise() {
         // Reset min and max terrain height values
         maxTerrainHeight = float.NegativeInfinity;
@@ -232,14 +220,6 @@ public class HeightMap : MonoBehaviour
         }
     }
 
-    private void ApplyMask(float[,] mask) {
-        for (int z = 0; z < GridSize; z++) {
-            for (int x = 0; x < GridSize; x++) {
-                heightmap[x, z] -= mask[x, z];
-            }
-        }
-    }
-
     void CreateMountains() {
         for (int z = 0; z <= resolution; z++) {
             for (int x = 0; x <=resolution; x++) {
@@ -264,6 +244,9 @@ public class HeightMap : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Generates a 2D mask to be applied to the terrain.
+    /// </summary>
     public float[,] GenerateMask() {
         float[,] mask = new float[GridSize, GridSize];
         for (int j = 0; j < GridSize; j++)
@@ -281,6 +264,17 @@ public class HeightMap : MonoBehaviour
     }
 
     /// <summary>
+    /// Applies the given mask to the terrain.
+    /// </summary>
+    private void ApplyMask(float[,] mask) {
+        for (int z = 0; z < GridSize; z++) {
+            for (int x = 0; x < GridSize; x++) {
+                heightmap[x, z] -= mask[x, z];
+            }
+        }
+    }
+
+    /// <summary>
     /// The height at the given (x, z) coordinates on the heightmap.
     /// </summary>
     public float this[int x, int z] {
@@ -293,6 +287,9 @@ public class HeightMap : MonoBehaviour
     /// </summary>
     public int GridSize => this.resolution + 1;
 
+    /// <summary>
+    /// Height level of the sea.
+    /// </summary>
     public float SeaLevel = 0;
 
     /// <summary>
@@ -306,8 +303,9 @@ public class HeightMap : MonoBehaviour
            select (nx, nz);
 
     /// <summary>
-    /// Returns the coordinates of all points in a square area specified by a
-    /// starting point and the size (number of points) of the square.
+    /// Returns the area containing specified by a starting point and the size
+    /// (number of points along the side) of the area. The returned area may be
+    /// not square, in case part of the area runs off of the terrain.
     /// </summary>
     public GridArea AreaOf(int x, int z, int size) {
         int sizeX = size;
@@ -319,15 +317,16 @@ public class HeightMap : MonoBehaviour
         return new GridArea(x, z, sizeX, sizeZ);
     }
 
-        /*
-        => from ax in Enumerable.Range(x, size)
-           from az in Enumerable.Range(z, size)
-           where ax < GridSize && az < GridSize
-           select (ax, az);
-        */
-
+    /// <summary>
+    /// Maximum number of points along the size of a mesh. Based on the maximum
+    /// number of indices Unity an handle.
+    /// </summary>
     private const int MaxMeshSize = 256;
 
+    /// <summary>
+    /// Yields the (x, z)-coordinates of all grid points at which a mesh should
+    /// be located.
+    /// </summary>
     public IEnumerable<(int X, int Z)> MeshPoints {
         get {
             int x = 0, z = 0;
@@ -347,7 +346,7 @@ public class HeightMap : MonoBehaviour
     /// is at least at sea level.
     /// </summary>
     public bool IsLand(int x, int z)
-        => heightmap[x, z] > SeaLevel; // this[x, z] > SeaLevel;
+        => heightmap[x, z] > SeaLevel;
 
     /// <summary>
     /// Returns true if and only if the terrain point at the given coordinates
@@ -368,13 +367,16 @@ public class HeightMap : MonoBehaviour
     // Used for debugging.
     /*
     private void OnDrawGizmos() {
-        if (this.terrainVertices is null)
+        if (this.heightmap is null)
             return;
-        foreach (Vector3 vertex in this.terrainVertices) {
-            if (IsCoast((int) vertex.x, (int) vertex.z)) {
-                Gizmos.DrawLine(vertex, vertex + 3.0f * Vector3.up);
+        for (int z = 0; z < GridSize; z++) {
+            for (int x = 0; x < GridSize; x++) {
+                if (IsCoast(x, z)) {
+                    Vector3 point = new Vector3(x, heightmap[x, z], z);
+                    Gizmos.DrawLine(point, point + 3.0f * Vector3.up);
+                }
             }
-        }   
+        }
     }
     */
 
