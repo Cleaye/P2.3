@@ -7,13 +7,11 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter))]
 public class HeightMap : MonoBehaviour
 {
-    [Header("Generator")]
-    public bool continuousGeneration = false;
-
     [Header("Perlin Noise Settings")]
     public NoiseMethodType type;
     [Range(1, 3)]
-	public int dimensions = 2;
+	public int dimensions = 3;
+    public Vector3 offset;
 
     [Range(2, 512)]
     public int resolution = 250;
@@ -35,46 +33,79 @@ public class HeightMap : MonoBehaviour
     public float terrainAmplifier = 2.3f;
 
     public Gradient gradient;
+    private GradientColorKey[] colorKeys;
+    private GradientAlphaKey[] alphaKeys;
     float minTerrainHeight;
     float maxTerrainHeight;
 
     Mesh terrainMesh;
     Vector3[] terrainVertices;
+    Vector3[] normals;
     Vector2[] uvs;
+    Color[] colors;
     int[] terrainTriangles;
         
     // Start is called before the first frame update
     void Start() {
+        GenerateTerrain();
+    }
+
+    public void GenerateTerrain() {
         SeaLevel = GameObject.Find("Ocean").transform.position.y;
         terrainMesh = new Mesh();
-        terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
+        terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().sharedMesh;
         GenerateCustomPerlinMap();
         UpdateMesh();
     }
 
-    /*
-    void Update() {
-        if (continuousGeneration) {
-            terrainMesh = new Mesh();
-            terrainMesh = GameObject.Find("Terrain").GetComponent<MeshFilter>().mesh;
-            GenerateCustomPerlinMap();
-            UpdateMesh();
-        }
-    }
-    */
+    public void ResetTerrainValues() {
+        dimensions = 3;
+        offset = new Vector3(0, 0, 0);
+        resolution = 250;
+        terrainFrequency = 50f;
+        terrainOctaves = 5;
+        terrainLacunarity = 2f;
+        terrainPersistence = 0.6f;
+        terrainAmplifier = 2.3f;
+        gradient = new Gradient();
+        gradient.mode = GradientMode.Fixed;
 
+        // Populate the color keys at the relative time 0 and 1 (0 and 100%)
+        colorKeys = new GradientColorKey[4];
+        colorKeys[0].color = new Color(1.0f, 0.5901458f, 0.1372549f);
+        colorKeys[0].time = 0.497f;
+        colorKeys[1].color = new Color(0.042245f, 0.3207547f, 0.004538973f);
+        colorKeys[1].time = 0.547f;
+        colorKeys[2].color = new Color(0.0f, 0.2358491f, 0.04003245f);
+        colorKeys[2].time = 0.766f;
+        colorKeys[3].color = new Color(0.4433962f, 0.4433962f, 0.4433962f);
+        colorKeys[3].time = 1.0f;
+
+        // Populate the alpha  keys at relative time 0 and 1  (0 and 100%)
+        alphaKeys = new GradientAlphaKey[1];
+        alphaKeys[0].alpha = 1.0f;
+        alphaKeys[0].time = 1.0f;
+
+        gradient.SetKeys(colorKeys, alphaKeys);
+        GenerateTerrain();
+    }
+    
     private void GenerateCustomPerlinMap() {
         terrainVertices = new Vector3[(resolution + 1) * (resolution + 1)];
+        uvs = new Vector2[terrainVertices.Length];
+        normals = new Vector3[terrainVertices.Length];
+        colors = new Color[terrainVertices.Length];
+
         NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
 
         // Map points have to be between 0-1 range
         float stepSize = 1f / resolution;
 
         // World coordinates
-        Vector3 point00 = transform.TransformPoint(new Vector3(-0.5f,-0.5f));
-		Vector3 point10 = transform.TransformPoint(new Vector3( 0.5f,-0.5f));
-		Vector3 point01 = transform.TransformPoint(new Vector3(-0.5f, 0.5f));
-		Vector3 point11 = transform.TransformPoint(new Vector3( 0.5f, 0.5f));
+        Vector3 point00 = transform.TransformPoint(new Vector3(-0.5f,-0.5f) + offset);
+		Vector3 point10 = transform.TransformPoint(new Vector3( 0.5f,-0.5f) + offset);
+		Vector3 point01 = transform.TransformPoint(new Vector3(-0.5f, 0.5f) + offset);
+		Vector3 point11 = transform.TransformPoint(new Vector3( 0.5f, 0.5f) + offset);
         
         // Calculate height for each point on the grid
         for (int i = 0, z = 0; z <= resolution; z++)
@@ -83,10 +114,12 @@ public class HeightMap : MonoBehaviour
             Vector3 point1 = Vector3.Lerp(point10, point11, (z + 0.5f) * stepSize);
             for (int x = 0; x <= resolution; x++)
             {
+                uvs[i] = new Vector2((float)x / resolution, (float)z / resolution);
+                normals[i] = Vector3.up;
+
                 Vector3 point = Vector3.Lerp(point0, point1, (x + 0.5f) * stepSize);
-                // Vector3 point = new Vector3(x * .3f, z * .3f);
                 float y = Noise.Sum(method, point, terrainFrequency, terrainOctaves, terrainLacunarity, terrainPersistence);
-                y = y * terrainAmplifier;
+                y *= terrainAmplifier;
                 
                 if (y > maxTerrainHeight)
                 {
@@ -103,8 +136,12 @@ public class HeightMap : MonoBehaviour
 
         var mask = GenerateTexture();
         for (int i = 0, z = 0; z <= resolution; z++) {
-            for (int x = 0; x <= resolution; x++) {            
+            for (int x = 0; x <= resolution; x++) {   
                 this[x,z] -= mask[i];
+
+                float height = Mathf.InverseLerp(minTerrainHeight, maxTerrainHeight, terrainVertices[i].y);
+                colors[i] = gradient.Evaluate(height);
+
                 i++;
             }
         }
@@ -137,14 +174,6 @@ public class HeightMap : MonoBehaviour
             }
             vert++;
         }
-
-        uvs = new Vector2[terrainVertices.Length];
-        for (int i = 0, z = 0; z <= resolution; z++) {
-            for (int x = 0; x <=resolution; x++) {
-                uvs[i] = new Vector2((float)x / resolution, (float)z / resolution);
-                i++;
-            }
-        }
     }
 
     void CreateMountains() {
@@ -176,7 +205,9 @@ public class HeightMap : MonoBehaviour
         terrainMesh.Clear();
         terrainMesh.vertices = terrainVertices;
         terrainMesh.triangles = terrainTriangles;
-        terrainMesh.uv = uvs;
+       // terrainMesh.uv = uvs;
+        terrainMesh.normals = normals;
+        terrainMesh.colors = colors;
         terrainMesh.RecalculateNormals();
     }
      public float[] GenerateTexture(){
@@ -218,6 +249,7 @@ public class HeightMap : MonoBehaviour
     /// </summary>
     public int GridSize => this.resolution + 1;
 
+    [Header("Sea Settings")]
     public float SeaLevel = 0;
 
     /// <summary>
