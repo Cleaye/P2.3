@@ -10,6 +10,24 @@ public class MeshData {
     public List<int>     Indices   = new List<int>();
 }
 
+public class GridArea {
+    
+    public int X;
+    public int Z;
+    public int SizeX; 
+    public int SizeZ;
+
+    public GridArea(int x, int z, int sizeX, int sizeZ)
+        => (X, Z, SizeX, SizeZ)
+        =  (x, z, sizeX, sizeZ);
+    
+    public IEnumerable<(int X, int Z)> Points
+        => from x in Enumerable.Range(X, SizeX)
+           from z in Enumerable.Range(Z, SizeZ)
+           select (x, z);
+
+}
+
 [RequireComponent(typeof(MeshFilter))]
 public class HeightMap : MonoBehaviour
 {
@@ -85,30 +103,30 @@ public class HeightMap : MonoBehaviour
 
         foreach (var (mx, mz) in MeshPoints) {
             MeshData data = new MeshData();
-            foreach (var (x, z) in AreaOf(mx, mz, MaxMeshSize)) {
-                Vector3 position = new Vector3(
-                    x,
-                    heightmap[x, z],
-                    z
-                );
-                data.Positions.Add(position);
-                Vector2 texcoords = new Vector2(
-                    (float) x / resolution,
-                    (float) z / resolution
-                );
-                data.Texcoords.Add(texcoords);
-            }
-            int max = MaxMeshSize - 1;
-            for (int z = 0, v = 0; z < max; z++, v++)
-                for (int x = 0; x < max; x++, v++) {
-                    if (mx + x >= GridSize || mz + z >= GridSize)
-                        continue;
-                    data.Indices.Add(v + 0);
-                    data.Indices.Add(v + max + 1);
-                    data.Indices.Add(v + 1);
-                    data.Indices.Add(v + 1);
-                    data.Indices.Add(v + max + 1);
-                    data.Indices.Add(v + max + 2);
+            GridArea area = AreaOf(mx, mz, MaxMeshSize);
+            for (int z = area.Z; z < area.Z + area.SizeZ; z++)
+                for (int x = area.X; x < area.X + area.SizeX; x++) {
+                    Vector3 position = new Vector3(
+                        x,
+                        heightmap[x, z],
+                        z
+                    );
+                    data.Positions.Add(position);
+                    Vector2 texcoords = new Vector2(
+                        (float) x / resolution,
+                        (float) z / resolution
+                    );
+                    data.Texcoords.Add(texcoords);
+                }
+            for (int z = 0, v = 0; z < area.SizeZ - 1; z++, v++)
+                for (int x = 0; x < area.SizeX - 1; x++, v++) {
+                    int o = x + area.SizeX * z;
+                    data.Indices.Add(o);
+                    data.Indices.Add(o + area.SizeX);
+                    data.Indices.Add(o + area.SizeX + 1);
+                    data.Indices.Add(o);
+                    data.Indices.Add(o + area.SizeX + 1);
+                    data.Indices.Add(o + 1);
                 }
             meshObjects.Add(CreateMesh(data));
         }
@@ -291,11 +309,22 @@ public class HeightMap : MonoBehaviour
     /// Returns the coordinates of all points in a square area specified by a
     /// starting point and the size (number of points) of the square.
     /// </summary>
-    public IEnumerable<(int X, int Z)> AreaOf(int x, int z, int size)
+    public GridArea AreaOf(int x, int z, int size) {
+        int sizeX = size;
+        int sizeZ = size;
+        if (x + sizeX > GridSize)
+            sizeX = GridSize - x;
+        if (z + sizeZ > GridSize)
+            sizeZ = GridSize - z;
+        return new GridArea(x, z, sizeX, sizeZ);
+    }
+
+        /*
         => from ax in Enumerable.Range(x, size)
            from az in Enumerable.Range(z, size)
            where ax < GridSize && az < GridSize
            select (ax, az);
+        */
 
     private const int MaxMeshSize = 256;
 
