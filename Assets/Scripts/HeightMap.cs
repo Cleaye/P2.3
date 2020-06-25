@@ -9,6 +9,7 @@ public class MeshData {
     public List<Vector3> Positions = new List<Vector3>();
     public List<Vector2> Texcoords = new List<Vector2>();
     public List<int>     Indices   = new List<int>();
+    public List<Color>   Colors    = new List<Color>();
 }
 
 /// <summary>
@@ -44,11 +45,12 @@ public class HeightMap : MonoBehaviour
 
     [Header("Perlin Noise Settings")]
     public NoiseMethodType type;
+    public Vector3 offset;
     [Range(1, 3)]
 	public int dimensions = 2;
 
     [Range(2, 512)]
-    public int resolution = 250;
+    public int resolution = 512;
 
     [Header("Terrain Settings")]
     // Controls how busy the noise is
@@ -66,7 +68,60 @@ public class HeightMap : MonoBehaviour
     [Range(0f, 5f)]
     public float terrainAmplifier = 2.3f;
 
+
+    [Header("Sand Settings")]
+    // Controls how busy the noise is
+    public float sandFrequency = 50f;
+    [Range(1, 8)]
+    // Controls how many layers should be added on top of eachother
+	public int sandOctaves = 5;
+    // Controls the rate of change in frequency. Standard is double the frequency each octave
+    [Range(1f, 4f)]
+	public float sandLacunarity = 2f;
+    // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
+	[Range(0f, 1f)]
+	public float sandPersistence = 0.6f;
+    // Controls the difference in heights between points
+    [Range(0f, 5f)]
+    public float sandAmplifier = 2.3f;
+
+    [Header("Grass Settings")]
+    // Controls how busy the noise is
+    public float grassFrequency = 50f;
+    [Range(1, 8)]
+    // Controls how many layers should be added on top of eachother
+	public int grassOctaves = 5;
+    // Controls the rate of change in frequency. Standard is double the frequency each octave
+    [Range(1f, 4f)]
+	public float grassLacunarity = 2f;
+    // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
+	[Range(0f, 1f)]
+	public float grassPersistence = 0.6f;
+    // Controls the difference in heights between points
+    [Range(0f, 5f)]
+    public float grassAmplifier = 2.3f;
+
+    [Header("Mountain Settings")]
+    // Controls how busy the noise is
+    public float mountainFrequency = 50f;
+    [Range(1, 8)]
+    // Controls how many layers should be added on top of eachother
+	public int mountainOctaves = 5;
+    // Controls the rate of change in frequency. Standard is double the frequency each octave
+    [Range(1f, 4f)]
+	public float mountainLacunarity = 2f;
+    // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
+	[Range(0f, 1f)]
+	public float mountainPersistence = 0.6f;
+    // Controls the difference in heights between points
+    [Range(0f, 5f)]
+    public float mountainAmplifier = 2.3f;
+
+
+    [Header("Color Settings")]
     public Gradient gradient;
+    private GradientColorKey[] colorKeys;
+    private GradientAlphaKey[] alphaKeys;
     float minTerrainHeight;
     float maxTerrainHeight;
 
@@ -77,6 +132,26 @@ public class HeightMap : MonoBehaviour
         
     // Start is called before the first frame update
     void Start() {
+        gradient = new Gradient();
+        gradient.mode = GradientMode.Fixed;
+
+        // Populate the color keys at the relative time 0 and 1 (0 and 100%)
+        colorKeys = new GradientColorKey[4];
+        colorKeys[0].color = new Color(1.0f, 0.5901458f, 0.1372549f);
+        colorKeys[0].time = 0.497f;
+        colorKeys[1].color = new Color(0.042245f, 0.3207547f, 0.004538973f);
+        colorKeys[1].time = 0.547f;
+        colorKeys[2].color = new Color(0.0f, 0.2358491f, 0.04003245f);
+        colorKeys[2].time = 0.766f;
+        colorKeys[3].color = new Color(0.4433962f, 0.4433962f, 0.4433962f);
+        colorKeys[3].time = 1.0f;
+
+        // Populate the alpha  keys at relative time 0 and 1  (0 and 100%)
+        alphaKeys = new GradientAlphaKey[1];
+        alphaKeys[0].alpha = 1.0f;
+        alphaKeys[0].time = 1.0f;
+
+        gradient.SetKeys(colorKeys, alphaKeys);
         Generate();
     }
 
@@ -85,13 +160,46 @@ public class HeightMap : MonoBehaviour
             Generate();
     }
 
-    private void Generate() {
+    public void Generate() {
         // Disable this object's MeshRenderer, as the meshes will be in separate
         // child GameObjects (as a GameObject can have only one mesh)
         GetComponent<MeshRenderer>().enabled = false;
-        SeaLevel = GameObject.Find("Ocean").transform.position.y;
+        SeaLevel = GameObject.Find("Ocean").transform.position.y;// - this.transform.position.y;
         GenerateTerrain();
         GenerateMeshes();
+        
+    }
+
+    public void ResetTerrainValues() {
+        dimensions = 3;
+        offset = new Vector3(0, 0, 0);
+        resolution = 512;
+        terrainFrequency = 50f;
+        terrainOctaves = 5;
+        terrainLacunarity = 2f;
+        terrainPersistence = 0.6f;
+        terrainAmplifier = 2.3f;
+        gradient = new Gradient();
+        gradient.mode = GradientMode.Fixed;
+
+        // Populate the color keys at the relative time 0 and 1 (0 and 100%)
+        colorKeys = new GradientColorKey[4];
+        colorKeys[0].color = new Color(1.0f, 0.5901458f, 0.1372549f);
+        colorKeys[0].time = 0.497f;
+        colorKeys[1].color = new Color(0.042245f, 0.3207547f, 0.004538973f);
+        colorKeys[1].time = 0.547f;
+        colorKeys[2].color = new Color(0.0f, 0.2358491f, 0.04003245f);
+        colorKeys[2].time = 0.766f;
+        colorKeys[3].color = new Color(0.4433962f, 0.4433962f, 0.4433962f);
+        colorKeys[3].time = 1.0f;
+
+        // Populate the alpha  keys at relative time 0 and 1  (0 and 100%)
+        alphaKeys = new GradientAlphaKey[1];
+        alphaKeys[0].alpha = 1.0f;
+        alphaKeys[0].time = 1.0f;
+
+        gradient.SetKeys(colorKeys, alphaKeys);
+        Generate();
     }
 
     private void GenerateTerrain() {
@@ -102,6 +210,18 @@ public class HeightMap : MonoBehaviour
         CreateMountains();
         for (int i = 0; i < 5; i++)
             UpdateShore();
+
+        // Reset min and max terrain height values
+        maxTerrainHeight = float.NegativeInfinity;
+        minTerrainHeight = float.PositiveInfinity;
+        for (int z = 0; z < GridSize; z++) {
+            for (int x = 0; x < GridSize; x++) {
+                if (this[x,z] > maxTerrainHeight)
+                    maxTerrainHeight = this[x,z];
+                if (this[x,z] < minTerrainHeight)
+                    minTerrainHeight = this[x,z];
+            }
+        }
     }
 
     /// <summary>
@@ -127,6 +247,42 @@ public class HeightMap : MonoBehaviour
                         heightmap[x, z],
                         z
                     );
+
+                    // Set color
+                    float height = Mathf.InverseLerp(minTerrainHeight, maxTerrainHeight, heightmap[x, z]);
+                    Color color = gradient.Evaluate(height);
+                    data.Colors.Add(color);
+
+                    // Beach settings
+                    if(color == new Color(1.0f, 0.5901458f, 0.1372549f)) {
+                        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+                        float sandNoise
+                                    = sandAmplifier
+                                    * Noise.Sum(method, position, sandFrequency, sandOctaves,
+                                        sandLacunarity, sandPersistence);
+                        position.y += sandNoise * position.y;
+                    }
+
+                    // Grass settings
+                    if(color == new Color(0.042245f, 0.3207547f, 0.004538973f)) {
+                        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+                        float grassNoise
+                                    = grassAmplifier
+                                    * Noise.Sum(method, position, grassFrequency, grassOctaves,
+                                        grassLacunarity, grassPersistence);
+                        position.y += grassNoise * position.y;
+                    }
+
+                    // Mountain settings
+                    if(color == new Color(0.0f, 0.2358491f, 0.04003245f) || color == new Color(0.4433962f, 0.4433962f, 0.4433962f)) {
+                        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+                        float mountainNoise
+                                    = mountainAmplifier
+                                    * Noise.Sum(method, position, mountainFrequency, mountainOctaves,
+                                        mountainLacunarity, mountainPersistence);
+                        position.y += mountainNoise * position.y;
+                    }
+                         
                     data.Positions.Add(position);
                     // Set texture coords
                     Vector2 texcoords = new Vector2(
@@ -173,7 +329,10 @@ public class HeightMap : MonoBehaviour
         filter.mesh.vertices  = data.Positions.ToArray();
         filter.mesh.triangles = data.Indices.ToArray();
         filter.mesh.uv        = data.Texcoords.ToArray();
+        filter.mesh.colors    = data.Colors.ToArray();
+        //filter.mesh.normals   = CalculateNormals(data); 
         filter.mesh.RecalculateNormals();
+        
         return @object;
     }
 
@@ -187,19 +346,16 @@ public class HeightMap : MonoBehaviour
     /// Generates heights for the heightmap using noise.
     /// </summary>
     private void GenerateNoise() {
-        // Reset min and max terrain height values
-        maxTerrainHeight = float.NegativeInfinity;
-        minTerrainHeight = float.PositiveInfinity;
         // Get the noise method to be used
         NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
         // Map points have to be between 0-1 range
         float stepSize = 1f / resolution;
         // World coordinates
         Vector3
-            point00 = transform.TransformPoint(new Vector3(-0.5f, -0.5f)),
-            point10 = transform.TransformPoint(new Vector3(0.5f, -0.5f)),
-            point01 = transform.TransformPoint(new Vector3(-0.5f, 0.5f)),
-            point11 = transform.TransformPoint(new Vector3(0.5f, 0.5f));
+            point00 = transform.TransformPoint(new Vector3(-0.5f, -0.5f) + offset),
+            point10 = transform.TransformPoint(new Vector3(0.5f, -0.5f) + offset),
+            point01 = transform.TransformPoint(new Vector3(-0.5f, 0.5f) + offset),
+            point11 = transform.TransformPoint(new Vector3(0.5f, 0.5f) + offset);
         for (int z = 0; z <= resolution; z++) {
             Vector3
                 point0 = Vector3.Lerp(point00, point01, (z + 0.5f) * stepSize),
@@ -211,10 +367,6 @@ public class HeightMap : MonoBehaviour
                     = terrainAmplifier
                     * Noise.Sum(method, point, terrainFrequency, terrainOctaves,
                         terrainLacunarity, terrainPersistence);
-                if (y > maxTerrainHeight)
-                    maxTerrainHeight = y;
-                if (y < minTerrainHeight)
-                    minTerrainHeight = y;
                 heightmap[x, z] = y;
             }
         }
@@ -269,7 +421,7 @@ public class HeightMap : MonoBehaviour
     private void ApplyMask(float[,] mask) {
         for (int z = 0; z < GridSize; z++) {
             for (int x = 0; x < GridSize; x++) {
-                heightmap[x, z] -= mask[x, z];
+                heightmap[x, z] -= (mask[x, z] * 2);
             }
         }
     }
@@ -286,6 +438,11 @@ public class HeightMap : MonoBehaviour
     /// The number of vertices along one side of the heightmap.
     /// </summary>
     public int GridSize => this.resolution + 1;
+
+    /// <summary>
+    /// The number of vertices along one side of the heightmap.
+    /// </summary>
+    public int MeshSize => GridSize - 2;
 
     /// <summary>
     /// Height level of the sea.
@@ -321,7 +478,7 @@ public class HeightMap : MonoBehaviour
     /// Maximum number of points along the size of a mesh. Based on the maximum
     /// number of indices Unity an handle.
     /// </summary>
-    private const int MaxMeshSize = 256;
+    private const int MaxMeshSize = 255;
 
     /// <summary>
     /// Yields the (x, z)-coordinates of all grid points at which a mesh should
@@ -365,19 +522,51 @@ public class HeightMap : MonoBehaviour
 
     // Uncomment to draws lines on each vertex that is considered coast.
     // Used for debugging.
-    /*
-    private void OnDrawGizmos() {
-        if (this.heightmap is null)
-            return;
-        for (int z = 0; z < GridSize; z++) {
-            for (int x = 0; x < GridSize; x++) {
-                if (IsCoast(x, z)) {
-                    Vector3 point = new Vector3(x, heightmap[x, z], z);
-                    Gizmos.DrawLine(point, point + 3.0f * Vector3.up);
-                }
-            }
+    
+    // private void OnDrawGizmos() {
+    //     if (this.heightmap is null)
+    //         return;
+    //     for (int z = 0; z < GridSize; z++) {
+    //         for (int x = 0; x < GridSize; x++) {
+    //             if (IsCoast(x, z)) {
+    //                 Vector3 point = new Vector3(x, heightmap[x, z], z);
+    //                 Gizmos.DrawLine(point, point + 3.0f * Vector3.up);
+    //             }
+    //         }
+    //     }
+    // }
+
+    Vector3[] CalculateNormals(MeshData data) {
+        Vector3[] vertexNormals = new Vector3[data.Positions.Count];
+        int triangleCount = data.Indices.Count / 3; // Divide by the amount of points that make a triangle
+        for (int i = 0; i < triangleCount; i++) {
+            int normalTriangleIndex = i * 3;
+            int vertexIndexA = data.Indices.ElementAt(normalTriangleIndex);
+            int vertexIndexB = data.Indices.ElementAt(normalTriangleIndex + 1);
+            int vertexIndexC = data.Indices.ElementAt(normalTriangleIndex + 2);
+
+            Vector3 triangleNormal = SurfaceNormalFromindices(data, vertexIndexA, vertexIndexB, vertexIndexC);
+            vertexNormals[vertexIndexA] += triangleNormal;
+            vertexNormals[vertexIndexB] += triangleNormal;
+            vertexNormals[vertexIndexC] += triangleNormal;
         }
+
+        for (int i = 0; i < vertexNormals.Length; i++) {
+            vertexNormals[i].Normalize();
+        }
+
+        return vertexNormals;
     }
-    */
+
+    Vector3 SurfaceNormalFromindices(MeshData data, int indexA, int indexB, int indexC) {
+        Vector3 pointA = data.Positions.ElementAt(indexA);
+        Vector3 pointB = data.Positions.ElementAt(indexB);
+        Vector3 pointC = data.Positions.ElementAt(indexC);
+
+        Vector3 sideAB = pointB - pointA;
+        Vector3 sideAC = pointC - pointA;
+        return Vector3.Cross(sideAB, sideAC).normalized;
+    }
+    
 
 }
