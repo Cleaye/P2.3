@@ -47,7 +47,7 @@ public class HeightMap : MonoBehaviour
     public NoiseMethodType type;
     public Vector3 offset;
     [Range(1, 3)]
-	public int dimensions = 2;
+	public int dimensions = 3;
 
     [Range(2, 512)]
     public int resolution = 512;
@@ -60,62 +60,62 @@ public class HeightMap : MonoBehaviour
 	public int terrainOctaves = 5;
     // Controls the rate of change in frequency. Standard is double the frequency each octave
     [Range(1f, 4f)]
-	public float terrainLacunarity = 2f;
+	public float terrainLacunarity = 2.5f;
     // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
 	[Range(0f, 1f)]
-	public float terrainPersistence = 0.6f;
+	public float terrainPersistence = 0.5f;
     // Controls the difference in heights between points
     [Range(0f, 5f)]
-    public float terrainAmplifier = 2.3f;
+    public float terrainAmplifier = 2.0f;
 
 
     [Header("Sand Settings")]
     // Controls how busy the noise is
-    public float sandFrequency = 50f;
+    public float sandFrequency = 1f;
     [Range(1, 8)]
     // Controls how many layers should be added on top of eachother
-	public int sandOctaves = 5;
+	public int sandOctaves = 8;
     // Controls the rate of change in frequency. Standard is double the frequency each octave
     [Range(1f, 4f)]
 	public float sandLacunarity = 2f;
     // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
 	[Range(0f, 1f)]
-	public float sandPersistence = 0.6f;
+	public float sandPersistence = 0.5f;
     // Controls the difference in heights between points
     [Range(0f, 5f)]
-    public float sandAmplifier = 2.3f;
+    public float sandAmplifier = 0.05f;
 
-    [Header("Grass Settings")]
-    // Controls how busy the noise is
-    public float grassFrequency = 50f;
-    [Range(1, 8)]
-    // Controls how many layers should be added on top of eachother
-	public int grassOctaves = 5;
-    // Controls the rate of change in frequency. Standard is double the frequency each octave
-    [Range(1f, 4f)]
-	public float grassLacunarity = 2f;
-    // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
-	[Range(0f, 1f)]
-	public float grassPersistence = 0.6f;
-    // Controls the difference in heights between points
-    [Range(0f, 5f)]
-    public float grassAmplifier = 2.3f;
+    // [Header("Grass Settings")]
+    // // Controls how busy the noise is
+    // public float grassFrequency = 50f;
+    // [Range(1, 8)]
+    // // Controls how many layers should be added on top of eachother
+	// public int grassOctaves = 5;
+    // // Controls the rate of change in frequency. Standard is double the frequency each octave
+    // [Range(1f, 4f)]
+	// public float grassLacunarity = 2f;
+    // // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
+	// [Range(0f, 1f)]
+	// public float grassPersistence = 0.6f;
+    // // Controls the difference in heights between points
+    // [Range(0f, 5f)]
+    // public float grassAmplifier = 2.3f;
 
-    [Header("Mountain Settings")]
-    // Controls how busy the noise is
-    public float mountainFrequency = 50f;
-    [Range(1, 8)]
-    // Controls how many layers should be added on top of eachother
-	public int mountainOctaves = 5;
-    // Controls the rate of change in frequency. Standard is double the frequency each octave
-    [Range(1f, 4f)]
-	public float mountainLacunarity = 2f;
-    // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
-	[Range(0f, 1f)]
-	public float mountainPersistence = 0.6f;
-    // Controls the difference in heights between points
-    [Range(0f, 5f)]
-    public float mountainAmplifier = 2.3f;
+    // [Header("Mountain Settings")]
+    // // Controls how busy the noise is
+    // public float mountainFrequency = 50f;
+    // [Range(1, 8)]
+    // // Controls how many layers should be added on top of eachother
+	// public int mountainOctaves = 5;
+    // // Controls the rate of change in frequency. Standard is double the frequency each octave
+    // [Range(1f, 4f)]
+	// public float mountainLacunarity = 2f;
+    // // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
+	// [Range(0f, 1f)]
+	// public float mountainPersistence = 0.6f;
+    // // Controls the difference in heights between points
+    // [Range(0f, 5f)]
+    // public float mountainAmplifier = 2.3f;
 
 
     [Header("Color Settings")]
@@ -263,25 +263,25 @@ public class HeightMap : MonoBehaviour
                         position.y += sandNoise * position.y;
                     }
 
-                    // Grass settings
-                    if(color == new Color(0.042245f, 0.3207547f, 0.004538973f)) {
-                        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
-                        float grassNoise
-                                    = grassAmplifier
-                                    * Noise.Sum(method, position, grassFrequency, grassOctaves,
-                                        grassLacunarity, grassPersistence);
-                        position.y += grassNoise * position.y;
-                    }
+                    // // Grass settings
+                    // if(color == new Color(0.042245f, 0.3207547f, 0.004538973f)) {
+                    //     NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+                    //     float grassNoise
+                    //                 = grassAmplifier
+                    //                 * Noise.Sum(method, position, grassFrequency, grassOctaves,
+                    //                     grassLacunarity, grassPersistence);
+                    //     position.y += grassNoise * position.y;
+                    // }
 
-                    // Mountain settings
-                    if(color == new Color(0.0f, 0.2358491f, 0.04003245f) || color == new Color(0.4433962f, 0.4433962f, 0.4433962f)) {
-                        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
-                        float mountainNoise
-                                    = mountainAmplifier
-                                    * Noise.Sum(method, position, mountainFrequency, mountainOctaves,
-                                        mountainLacunarity, mountainPersistence);
-                        position.y += mountainNoise * position.y;
-                    }
+                    // // Mountain settings
+                    // if(color == new Color(0.0f, 0.2358491f, 0.04003245f) || color == new Color(0.4433962f, 0.4433962f, 0.4433962f)) {
+                    //     NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+                    //     float mountainNoise
+                    //                 = mountainAmplifier
+                    //                 * Noise.Sum(method, position, mountainFrequency, mountainOctaves,
+                    //                     mountainLacunarity, mountainPersistence);
+                    //     position.y += mountainNoise * position.y;
+                    // }
                          
                     data.Positions.Add(position);
                     // Set texture coords

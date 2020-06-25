@@ -1767,13 +1767,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   continuousGeneration: 0
   type: 0
-  dimensions: 2
+  offset: {x: 0, y: 0, z: 0}
+  dimensions: 3
   resolution: 512
   terrainFrequency: 50
   terrainOctaves: 5
-  terrainLacunarity: 2
-  terrainPersistence: 0.6
-  terrainAmplifier: 2.3
+  terrainLacunarity: 2.5
+  terrainPersistence: 0.5
+  terrainAmplifier: 2
+  sandFrequency: 1
+  sandOctaves: 8
+  sandLacunarity: 2
+  sandPersistence: 0.5
+  sandAmplifier: 0.05
   gradient:
     serializedVersion: 2
     key0: {r: 1, g: 1, b: 1, a: 1}
@@ -1822,7 +1828,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 6ef812431688f9b41bea67ec63ded9bc, type: 2}
+  - {fileID: 2100000, guid: 91dbca5d941884b4d8d1e6e7681166d4, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
