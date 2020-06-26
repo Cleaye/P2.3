@@ -40,9 +40,6 @@ public class GridArea {
 [RequireComponent(typeof(MeshFilter))]
 public class HeightMap : MonoBehaviour
 {
-    [Header("Generator")]
-    public bool continuousGeneration = false;
-
     [Header("Perlin Noise Settings")]
     public NoiseMethodType type;
     public Vector3 offset;
@@ -51,7 +48,7 @@ public class HeightMap : MonoBehaviour
 
     [Range(2, 512)]
     public int resolution = 512;
-    public int maskStrength = 2;
+    public float maskStrength = 2;
 
     [Header("Terrain Settings")]
     // Controls how busy the noise is
@@ -67,8 +64,8 @@ public class HeightMap : MonoBehaviour
 	public float terrainPersistence = 0.5f;
     // Controls the difference in heights between points
     [Range(0f, 5f)]
-    public float terrainAmplifier = 2f;
-
+    public float terrainAmplifier = 2f;    
+    public float terrainStrength = 10f;
 
     [Header("Sand Settings")]
     public float sandFrequency = 1f;
@@ -79,45 +76,34 @@ public class HeightMap : MonoBehaviour
 	[Range(0f, 1f)]
 	public float sandPersistence = 0.5f;
     [Range(0f, 1f)]
-    public float sandAmplifier = 0.05f;
+    public float sandAmplifier = 0.4f;
+
+    [Header("Grass Settings")]
+    public float grassFrequency = 200f;
+    [Range(1, 8)]
+	public int grassOctaves = 1;
+    [Range(1f, 4f)]
+	public float grassLacunarity = 3.2f;
+	[Range(0f, 1f)]
+	public float grassPersistence = 0.6f;
+    [Range(0f, 5f)]
+    public float grassAmplifier = 0.05f;
 
     [Header("Mountain Settings")]
     // Controls how busy the noise is
-    [Range(1f, 25f)]
-    public float mountainStrength = 10f;
-
-    // [Header("Grass Settings")]
-    // // Controls how busy the noise is
-    // public float grassFrequency = 50f;
-    // [Range(1, 8)]
-    // // Controls how many layers should be added on top of eachother
-	// public int grassOctaves = 5;
-    // // Controls the rate of change in frequency. Standard is double the frequency each octave
-    // [Range(1f, 4f)]
-	// public float grassLacunarity = 2f;
-    // // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
-	// [Range(0f, 1f)]
-	// public float grassPersistence = 0.6f;
-    // // Controls the difference in heights between points
-    // [Range(0f, 5f)]
-    // public float grassAmplifier = 2.3f;
-
-    // [Header("Mountain Settings")]
-    // // Controls how busy the noise is
-    // public float mountainFrequency = 50f;
-    // [Range(1, 8)]
-    // // Controls how many layers should be added on top of eachother
-	// public int mountainOctaves = 5;
-    // // Controls the rate of change in frequency. Standard is double the frequency each octave
-    // [Range(1f, 4f)]
-	// public float mountainLacunarity = 2f;
-    // // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
-	// [Range(0f, 1f)]
-	// public float mountainPersistence = 0.6f;
-    // // Controls the difference in heights between points
-    // [Range(0f, 5f)]
-    // public float mountainAmplifier = 2.3f;
-
+    public float mountainFrequency = 50f;
+    [Range(1, 8)]
+    // Controls how many layers should be added on top of eachother
+	public int mountainOctaves = 3;
+    // Controls the rate of change in frequency. Standard is double the frequency each octave
+    [Range(1f, 4f)]
+	public float mountainLacunarity = 2f;
+    // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
+	[Range(0f, 1f)]
+	public float mountainPersistence = 0.6f;
+    // Controls the difference in heights between points
+    [Range(0f, 5f)]
+    public float mountainAmplifier = 0.3f;
 
     [Header("Color Settings")]
     public Gradient gradient;
@@ -156,11 +142,6 @@ public class HeightMap : MonoBehaviour
         Generate();
     }
 
-    void Update() {
-        if (continuousGeneration)
-            Generate();
-    }
-
     public void Generate() {
         // Disable this object's MeshRenderer, as the meshes will be in separate
         // child GameObjects (as a GameObject can have only one mesh)
@@ -172,14 +153,32 @@ public class HeightMap : MonoBehaviour
     }
 
     public void ResetTerrainValues() {
-        dimensions = 3;
         offset = new Vector3(0, 0, 0);
+        dimensions = 3;
         resolution = 512;
-        terrainFrequency = 50f;
+        maskStrength = 2;
+        terrainFrequency = 50f; 
         terrainOctaves = 5;
-        terrainLacunarity = 2f;
-        terrainPersistence = 0.6f;
-        terrainAmplifier = 2.3f;
+        terrainLacunarity = 2.5f;
+        terrainPersistence = 0.5f;
+        terrainAmplifier = 2f;    
+        terrainStrength = 10f;
+        sandFrequency = 1f;
+        sandOctaves = 8;
+        sandLacunarity = 2f;
+        sandPersistence = 0.5f;
+        sandAmplifier = 0.4f;
+        grassFrequency = 200f;
+        grassOctaves = 1;
+        grassLacunarity = 3.2f;
+        grassPersistence = 0.6f;
+        grassAmplifier = 0.05f;
+        mountainFrequency = 50f;
+        mountainOctaves = 3;
+        mountainLacunarity = 2f;
+        mountainPersistence = 0.6f;
+        mountainAmplifier = 0.3f;
+
         gradient = new Gradient();
         gradient.mode = GradientMode.Fixed;
 
@@ -209,8 +208,6 @@ public class HeightMap : MonoBehaviour
         float[,] mask = GenerateMask();
         ApplyMask(mask);
         CreateMountains();
-        for (int i = 0; i < 5; i++)
-            UpdateShore();
 
         // Reset min and max terrain height values
         maxTerrainHeight = float.NegativeInfinity;
@@ -255,7 +252,7 @@ public class HeightMap : MonoBehaviour
                     data.Colors.Add(color);
 
                     // Beach settings
-                    if(color == new Color(1.0f, 0.5901458f, 0.1372549f) || color == new Color(0.042245f, 0.3207547f, 0.004538973f)) {
+                    if(color == new Color(1.0f, 0.5901458f, 0.1372549f)) {
                         NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
                         float sandNoise
                                     = sandAmplifier
@@ -264,34 +261,28 @@ public class HeightMap : MonoBehaviour
                         position.y += sandNoise * (position.y / terrainAmplifier);
                     }
 
-                    // // Grass settings
-                    // if(color == new Color(0.042245f, 0.3207547f, 0.004538973f)) {
-                    //     NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
-                    //     float grassNoise
-                    //                 = grassAmplifier
-                    //                 * Noise.Sum(method, position, grassFrequency, grassOctaves,
-                    //                     grassLacunarity, grassPersistence);
-                    //     position.y += grassNoise * position.y;
-                    // }
-
-                    // Mountain settings
-                    if(color == new Color(0.0f, 0.2358491f, 0.04003245f) || color == new Color(0.4433962f, 0.4433962f, 0.4433962f)) {
-                        // NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
-                        // float mountainNoise
-                        //             = mountainAmplifier
-                        //             * Noise.Sum(method, position, mountainFrequency, mountainOctaves,
-                        //                 mountainLacunarity, mountainPersistence);
-                        // position.y += mountainNoise * position.y;
-                        position.y *= 1f;
+                    // Grass settings
+                    if(color == new Color(0.042245f, 0.3207547f, 0.004538973f)) {
+                        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+                        float grassNoise
+                                    = grassAmplifier
+                                    * Noise.Sum(method, position, grassFrequency, grassOctaves,
+                                        grassLacunarity, grassPersistence);
+                        position.y += grassNoise * (position.y / terrainAmplifier);
                     }
 
+                    // Mountain settings
+                    if(color == new Color(0.0f, 0.2358491f, 0.04003245f)) {
+                        NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+                        float mountainNoise
+                                    = mountainAmplifier
+                                    * Noise.Sum(method, position, mountainFrequency, mountainOctaves,
+                                        mountainLacunarity, mountainPersistence);
+                        position.y += mountainNoise * (position.y / terrainAmplifier);
+                    }
+
+                    // Create vulcano crater
                     if(color == new Color(0.227451f, 0.1490196f, 0.1411765f)) {
-                        // NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
-                        // float mountainNoise
-                        //             = mountainAmplifier
-                        //             * Noise.Sum(method, position, mountainFrequency, mountainOctaves,
-                        //                 mountainLacunarity, mountainPersistence);
-                        // position.y += mountainNoise * position.y;
                         position.y *= 0.9f;
                     }
                          
@@ -387,7 +378,7 @@ public class HeightMap : MonoBehaviour
         for (int z = 0; z <= resolution; z++) {
             for (int x = 0; x <=resolution; x++) {
                 if (IsLand(x,z) && !IsCoast(x,z)) {
-                    heightmap[x, z] *= mountainStrength;
+                    heightmap[x, z] *= terrainStrength;
                 }
             }
         }
