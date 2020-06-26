@@ -51,6 +51,7 @@ public class HeightMap : MonoBehaviour
 
     [Range(2, 512)]
     public int resolution = 512;
+    public int maskStrength = 2;
 
     [Header("Terrain Settings")]
     // Controls how busy the noise is
@@ -66,24 +67,24 @@ public class HeightMap : MonoBehaviour
 	public float terrainPersistence = 0.5f;
     // Controls the difference in heights between points
     [Range(0f, 5f)]
-    public float terrainAmplifier = 2.0f;
+    public float terrainAmplifier = 2f;
 
 
     [Header("Sand Settings")]
-    // Controls how busy the noise is
     public float sandFrequency = 1f;
     [Range(1, 8)]
-    // Controls how many layers should be added on top of eachother
 	public int sandOctaves = 8;
-    // Controls the rate of change in frequency. Standard is double the frequency each octave
     [Range(1f, 4f)]
 	public float sandLacunarity = 2f;
-    // Controls how much incrementing octaves influence the octaves below it. Standard is half each octave
 	[Range(0f, 1f)]
 	public float sandPersistence = 0.5f;
-    // Controls the difference in heights between points
-    [Range(0f, 5f)]
+    [Range(0f, 1f)]
     public float sandAmplifier = 0.05f;
+
+    [Header("Mountain Settings")]
+    // Controls how busy the noise is
+    [Range(1f, 25f)]
+    public float mountainStrength = 10f;
 
     // [Header("Grass Settings")]
     // // Controls how busy the noise is
@@ -142,8 +143,8 @@ public class HeightMap : MonoBehaviour
         colorKeys[1].color = new Color(0.042245f, 0.3207547f, 0.004538973f);
         colorKeys[1].time = 0.547f;
         colorKeys[2].color = new Color(0.0f, 0.2358491f, 0.04003245f);
-        colorKeys[2].time = 0.766f;
-        colorKeys[3].color = new Color(0.4433962f, 0.4433962f, 0.4433962f);
+        colorKeys[2].time = 0.932f;
+        colorKeys[3].color = new Color(0.227451f, 0.1490196f, 0.1411765f);
         colorKeys[3].time = 1.0f;
 
         // Populate the alpha  keys at relative time 0 and 1  (0 and 100%)
@@ -189,8 +190,8 @@ public class HeightMap : MonoBehaviour
         colorKeys[1].color = new Color(0.042245f, 0.3207547f, 0.004538973f);
         colorKeys[1].time = 0.547f;
         colorKeys[2].color = new Color(0.0f, 0.2358491f, 0.04003245f);
-        colorKeys[2].time = 0.766f;
-        colorKeys[3].color = new Color(0.4433962f, 0.4433962f, 0.4433962f);
+        colorKeys[2].time = 0.932f;
+        colorKeys[3].color = new Color(0.227451f, 0.1490196f, 0.1411765f);
         colorKeys[3].time = 1.0f;
 
         // Populate the alpha  keys at relative time 0 and 1  (0 and 100%)
@@ -254,13 +255,13 @@ public class HeightMap : MonoBehaviour
                     data.Colors.Add(color);
 
                     // Beach settings
-                    if(color == new Color(1.0f, 0.5901458f, 0.1372549f)) {
+                    if(color == new Color(1.0f, 0.5901458f, 0.1372549f) || color == new Color(0.042245f, 0.3207547f, 0.004538973f)) {
                         NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
                         float sandNoise
                                     = sandAmplifier
                                     * Noise.Sum(method, position, sandFrequency, sandOctaves,
                                         sandLacunarity, sandPersistence);
-                        position.y += sandNoise * position.y;
+                        position.y += sandNoise * (position.y / terrainAmplifier);
                     }
 
                     // // Grass settings
@@ -273,15 +274,26 @@ public class HeightMap : MonoBehaviour
                     //     position.y += grassNoise * position.y;
                     // }
 
-                    // // Mountain settings
-                    // if(color == new Color(0.0f, 0.2358491f, 0.04003245f) || color == new Color(0.4433962f, 0.4433962f, 0.4433962f)) {
-                    //     NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
-                    //     float mountainNoise
-                    //                 = mountainAmplifier
-                    //                 * Noise.Sum(method, position, mountainFrequency, mountainOctaves,
-                    //                     mountainLacunarity, mountainPersistence);
-                    //     position.y += mountainNoise * position.y;
-                    // }
+                    // Mountain settings
+                    if(color == new Color(0.0f, 0.2358491f, 0.04003245f) || color == new Color(0.4433962f, 0.4433962f, 0.4433962f)) {
+                        // NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+                        // float mountainNoise
+                        //             = mountainAmplifier
+                        //             * Noise.Sum(method, position, mountainFrequency, mountainOctaves,
+                        //                 mountainLacunarity, mountainPersistence);
+                        // position.y += mountainNoise * position.y;
+                        position.y *= 1f;
+                    }
+
+                    if(color == new Color(0.227451f, 0.1490196f, 0.1411765f)) {
+                        // NoiseMethod method = Noise.noiseMethods[(int)type][dimensions - 1];
+                        // float mountainNoise
+                        //             = mountainAmplifier
+                        //             * Noise.Sum(method, position, mountainFrequency, mountainOctaves,
+                        //                 mountainLacunarity, mountainPersistence);
+                        // position.y += mountainNoise * position.y;
+                        position.y *= 0.9f;
+                    }
                          
                     data.Positions.Add(position);
                     // Set texture coords
@@ -330,7 +342,6 @@ public class HeightMap : MonoBehaviour
         filter.mesh.triangles = data.Indices.ToArray();
         filter.mesh.uv        = data.Texcoords.ToArray();
         filter.mesh.colors    = data.Colors.ToArray();
-        //filter.mesh.normals   = CalculateNormals(data); 
         filter.mesh.RecalculateNormals();
         
         return @object;
@@ -376,7 +387,7 @@ public class HeightMap : MonoBehaviour
         for (int z = 0; z <= resolution; z++) {
             for (int x = 0; x <=resolution; x++) {
                 if (IsLand(x,z) && !IsCoast(x,z)) {
-                    heightmap[x, z] *= 10.0f;
+                    heightmap[x, z] *= mountainStrength;
                 }
             }
         }
@@ -421,7 +432,7 @@ public class HeightMap : MonoBehaviour
     private void ApplyMask(float[,] mask) {
         for (int z = 0; z < GridSize; z++) {
             for (int x = 0; x < GridSize; x++) {
-                heightmap[x, z] -= (mask[x, z] * 2);
+                heightmap[x, z] -= (mask[x, z] * maskStrength);
             }
         }
     }
@@ -447,7 +458,7 @@ public class HeightMap : MonoBehaviour
     /// <summary>
     /// Height level of the sea.
     /// </summary>
-    public float SeaLevel = 0;
+    private float SeaLevel = 0;
 
     /// <summary>
     /// Given the coordinates of a grid point, returns the coordinates of all
@@ -535,38 +546,4 @@ public class HeightMap : MonoBehaviour
     //         }
     //     }
     // }
-
-    Vector3[] CalculateNormals(MeshData data) {
-        Vector3[] vertexNormals = new Vector3[data.Positions.Count];
-        int triangleCount = data.Indices.Count / 3; // Divide by the amount of points that make a triangle
-        for (int i = 0; i < triangleCount; i++) {
-            int normalTriangleIndex = i * 3;
-            int vertexIndexA = data.Indices.ElementAt(normalTriangleIndex);
-            int vertexIndexB = data.Indices.ElementAt(normalTriangleIndex + 1);
-            int vertexIndexC = data.Indices.ElementAt(normalTriangleIndex + 2);
-
-            Vector3 triangleNormal = SurfaceNormalFromindices(data, vertexIndexA, vertexIndexB, vertexIndexC);
-            vertexNormals[vertexIndexA] += triangleNormal;
-            vertexNormals[vertexIndexB] += triangleNormal;
-            vertexNormals[vertexIndexC] += triangleNormal;
-        }
-
-        for (int i = 0; i < vertexNormals.Length; i++) {
-            vertexNormals[i].Normalize();
-        }
-
-        return vertexNormals;
-    }
-
-    Vector3 SurfaceNormalFromindices(MeshData data, int indexA, int indexB, int indexC) {
-        Vector3 pointA = data.Positions.ElementAt(indexA);
-        Vector3 pointB = data.Positions.ElementAt(indexB);
-        Vector3 pointC = data.Positions.ElementAt(indexC);
-
-        Vector3 sideAB = pointB - pointA;
-        Vector3 sideAC = pointC - pointA;
-        return Vector3.Cross(sideAB, sideAC).normalized;
-    }
-    
-
 }
