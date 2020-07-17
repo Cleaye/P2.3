@@ -566,7 +566,4 @@ public class HeightMap : MonoBehaviour
     //     }
     // }
 
-    public void GenerateNewTerrain() {
-
-    }
 }
