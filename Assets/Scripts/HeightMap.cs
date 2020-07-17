@@ -202,6 +202,34 @@ public class HeightMap : MonoBehaviour
         Generate();
     }
 
+    public void GenerateCustomTerrainValues(Vector3 newOffset, float newMaskStrength, 
+    List<float> terrainValues, List<float> sandValues, List<float> grassValues, List<float> mountainValues) {
+        offset = newOffset;
+        maskStrength = newMaskStrength;
+        terrainFrequency = terrainValues.ElementAt(0); 
+        terrainOctaves = (int)terrainValues.ElementAt(1);
+        terrainLacunarity = terrainValues.ElementAt(2);
+        terrainPersistence = terrainValues.ElementAt(3);
+        terrainAmplifier = terrainValues.ElementAt(4);    
+        terrainStrength = terrainValues.ElementAt(5);
+        sandFrequency = sandValues.ElementAt(0);
+        sandOctaves = (int)sandValues.ElementAt(1);
+        sandLacunarity = sandValues.ElementAt(2);
+        sandPersistence = sandValues.ElementAt(3);
+        sandAmplifier = sandValues.ElementAt(4);
+        grassFrequency = grassValues.ElementAt(0);
+        grassOctaves = (int)grassValues.ElementAt(1);
+        grassLacunarity = grassValues.ElementAt(2);
+        grassPersistence = grassValues.ElementAt(3);
+        grassAmplifier = grassValues.ElementAt(4);
+        mountainFrequency = mountainValues.ElementAt(0);
+        mountainOctaves =  (int)mountainValues.ElementAt(1);
+        mountainLacunarity =  mountainValues.ElementAt(2);
+        mountainPersistence = mountainValues.ElementAt(3);
+        mountainAmplifier =  mountainValues.ElementAt(4);
+        Generate();
+    }
+
     private void GenerateTerrain() {
         InitializeMap();
         GenerateNoise();
@@ -537,4 +565,8 @@ public class HeightMap : MonoBehaviour
     //         }
     //     }
     // }
+
+    public void GenerateNewTerrain() {
+
+    }
 }
